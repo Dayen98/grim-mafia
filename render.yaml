@@ -1,0 +1,17 @@
+# Render.com 배포 설정
+# https://render.com 에서 New ▸ Blueprint 로 이 저장소를 연결하면 그대로 뜹니다.
+#
+# 무료 플랜은 15분간 접속이 없으면 잠들고, 다음 접속 때 30~60초쯤 깨어나는 시간이 걸립니다.
+# 잠드는 게 싫으면 Render 대시보드에서 플랜만 Starter로 올리면 됩니다. (코드 수정 불필요)
+services:
+  - type: web
+    name: grim-mafia
+    runtime: node
+    plan: free
+    region: singapore # 한국에서 가장 가까운 지역
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: '22'

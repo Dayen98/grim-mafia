@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($paths = @\\(\"$env:ProgramFiles\\\\nodejs\\\\node.exe\", \"${env:ProgramFiles\\(x86\\)}\\\\nodejs\\\\node.exe\", \"$env:LOCALAPPDATA\\\\Programs\\\\nodejs\\\\node.exe\", \"$env:APPDATA\\\\nvm\\\\node.exe\"\\); foreach \\($p in $paths\\) { if \\(Test-Path $p\\) { \"FOUND: $p\" } }; Get-ChildItem \"$env:LOCALAPPDATA\\\\fnm_multishells\",\"$env:APPDATA\\\\nvm\",\"$env:ProgramFiles\\\\nodejs\" -ErrorAction SilentlyContinue | Select-Object -First 10 FullName)",
+      "PowerShell(Get-Command nvm,volta,fnm -ErrorAction SilentlyContinue)",
+      "PowerShell(\"---\")",
+      "PowerShell(\"---nvm/volta---\")",
+      "PowerShell($f = \"C:\\\\Users\\\\user\\\\Desktop\\\\클로드 게임\\\\server.js\"; \\(Get-Content $f -Raw -Encoding UTF8\\) -replace \"emit\\\\\\('canvas:init', \\\\{ strokes: \\\\[\\\\] \\\\}\\\\\\)\", \"emit\\('canvas:init', { strokes: [], openStrokeId: null }\\)\" | Set-Content $f -Encoding UTF8 -NoNewline)",
+      "PowerShell($f = \"C:\\\\Users\\\\user\\\\Desktop\\\\클로드 게임\\\\server.js\"; $b = [System.IO.File]::ReadAllBytes\\($f\\); \"BOM bytes: $\\($b[0..2] -join ','\\)\"; \"Size: $\\($b.Length\\)\"; $t = [System.IO.File]::ReadAllText\\($f\\); \"canvas:init count: \" + \\([regex]::Matches\\($t,\"canvas:init\"\\)\\).Count; \"korean sample ok: \" + $t.Contains\\(\"그림 마피아\"\\); \"openStrokeId null count: \" + \\([regex]::Matches\\($t,\"openStrokeId: null\"\\)\\).Count)",
+      "PowerShell($f = \"C:\\\\Users\\\\user\\\\Desktop\\\\클로드 게임\\\\server.js\"; $t = [System.IO.File]::ReadAllText\\($f\\); [System.IO.File]::WriteAllText\\($f, $t, \\(New-Object System.Text.UTF8Encoding\\($false\\)\\)\\); $b = [System.IO.File]::ReadAllBytes\\($f\\); \"BOM now: $\\($b[0..2] -join ','\\)  size=$\\($b.Length\\)\")",
+      "PowerShell(winget install --id OpenJS.NodeJS.LTS -e --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity)",
+      "Bash(curl -s http://localhost:3000/healthz)",
+      "Bash(curl -s http://localhost:3000/debug/room/NCARV)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/healthz\" -UseBasicParsing -TimeoutSec 3; \"RUNNING: \" + $r.Content } catch { \"NOT RUNNING\" })",
+      "PowerShell(Start-Sleep -Seconds 2; try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/healthz\" -UseBasicParsing -TimeoutSec 3; \"RUNNING: \" + $r.Content } catch { \"NOT RUNNING\" })",
+      "PowerShell(Get-NetConnectionProfile)",
+      "PowerShell(\"\")",
+      "Bash(seq 1 30)",
+      "Bash(grep -qE 'trycloudflare\\\\.com' C:/Users/user/AppData/Local/Temp/claude/C--Users-user-Desktop-------/42e58ccd-599c-416f-a199-6324e696587d/tasks/bugoyjvfl.output)",
+      "Bash(break)",
+      "Bash(sleep 2)",
+      "Bash(grep -oE 'https://[a-z0-9-]+\\\\.trycloudflare\\\\.com' C:/Users/user/AppData/Local/Temp/claude/C--Users-user-Desktop-------/42e58ccd-599c-416f-a199-6324e696587d/tasks/bugoyjvfl.output)"
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>그림 마피아</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>" />
+
+    <!-- 손글씨 느낌의 한글 폰트 (인터넷이 없으면 시스템 폰트로 대체) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!-- 종이 위에 그린 듯한 배경 (SVG, 화면 전체 고정) -->
+    <div class="paper-bg" aria-hidden="true">
+      <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice">
+        <!-- 언덕 -->
+        <path class="hill hill-3" d="M-20 700 C 180 620, 340 690, 520 660 S 900 560, 1120 640 S 1380 690, 1460 650 L1460 920 L-20 920 Z" />
+        <path class="hill hill-2" d="M-20 780 C 220 700, 420 780, 660 745 S 1080 660, 1300 730 S 1420 760, 1460 745 L1460 920 L-20 920 Z" />
+        <path class="hill hill-1" d="M-20 850 C 260 790, 520 860, 780 825 S 1200 770, 1460 830 L1460 920 L-20 920 Z" />
+
+        <!-- 나무 (실루엣) -->
+        <g class="tree">
+          <path d="M150 700 L150 560 M150 620 L112 578 M150 640 L190 600 M150 592 L120 560" />
+          <circle cx="150" cy="545" r="34" />
+        </g>
+        <g class="tree">
+          <path d="M1290 730 L1290 600 M1290 655 L1256 618 M1290 675 L1326 640" />
+          <circle cx="1290" cy="588" r="28" />
+        </g>
+
+        <!-- 해 -->
+        <g class="sun">
+          <circle cx="1210" cy="150" r="42" />
+          <path d="M1210 78 L1210 58 M1210 242 L1210 262 M1138 150 L1118 150 M1282 150 L1302 150
+                   M1159 99 L1145 85 M1261 201 L1275 215 M1261 99 L1275 85 M1159 201 L1145 215" />
+        </g>
+
+        <!-- 손으로 그린 듯한 별/낙서 -->
+        <g class="doodle">
+          <path d="M300 180 l10 26 28 2 -21 18 7 27 -24 -15 -24 15 7 -27 -21 -18 28 -2 z" />
+          <path d="M980 300 l7 18 20 2 -15 13 5 19 -17 -11 -17 11 5 -19 -15 -13 20 -2 z" />
+          <path d="M520 90 c 18 -14, 34 6, 20 20 c -12 12, -30 -2, -20 -20" fill="none" />
+        </g>
+      </svg>
+    </div>
+
+    <div id="root"></div>
+
+    <!-- 빌드 단계 없이 바로 실행되도록 node_modules의 UMD 빌드를 그대로 사용 -->
+    <script src="/vendor/react/react.development.js"></script>
+    <script src="/vendor/react-dom/react-dom.development.js"></script>
+    <script src="/vendor/babel/babel.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="text/babel" data-presets="react" src="/app.jsx"></script>
+  </body>
+</html>
