@@ -522,46 +522,46 @@ function Avatar({ a, size = 44, className }) {
   const S = { stroke: '#2f2a26', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round' };
 
   const eyes = [
-    <g key="0" {...S} fill="#2f2a26"><circle cx="38" cy="52" r="4.5" /><circle cx="62" cy="52" r="4.5" /></g>,
-    <g key="1" {...S} fill="none"><path d="M32 52 q6 -8 12 0" /><path d="M56 52 q6 -8 12 0" /></g>,
-    <g key="2" {...S} fill="none"><path d="M32 48 q6 9 12 0" /><path d="M56 48 q6 9 12 0" /></g>,
-    <g key="3" {...S} fill="#fff"><ellipse cx="38" cy="52" rx="7" ry="8" /><ellipse cx="62" cy="52" rx="7" ry="8" />
+    <g key="e0" {...S} fill="#2f2a26"><circle cx="38" cy="52" r="4.5" /><circle cx="62" cy="52" r="4.5" /></g>,
+    <g key="e1" {...S} fill="none"><path d="M32 52 q6 -8 12 0" /><path d="M56 52 q6 -8 12 0" /></g>,
+    <g key="e2" {...S} fill="none"><path d="M32 48 q6 9 12 0" /><path d="M56 48 q6 9 12 0" /></g>,
+    <g key="e3" {...S} fill="#fff"><ellipse cx="38" cy="52" rx="7" ry="8" /><ellipse cx="62" cy="52" rx="7" ry="8" />
       <circle cx="38" cy="53" r="3" fill="#2f2a26" stroke="none" /><circle cx="62" cy="53" r="3" fill="#2f2a26" stroke="none" /></g>,
-    <g key="4" {...S} fill="none"><path d="M33 52 h11" /><path d="M57 52 h11" /></g>,
-    <g key="5" {...S} fill="#2f2a26"><circle cx="38" cy="52" r="6" /><circle cx="62" cy="52" r="6" />
+    <g key="e4" {...S} fill="none"><path d="M33 52 h11" /><path d="M57 52 h11" /></g>,
+    <g key="e5" {...S} fill="#2f2a26"><circle cx="38" cy="52" r="6" /><circle cx="62" cy="52" r="6" />
       <circle cx="40" cy="50" r="2" fill="#fff" stroke="none" /><circle cx="64" cy="50" r="2" fill="#fff" stroke="none" /></g>,
   ][av.eyes] || null;
 
   const mouth = [
-    <path key="0" d="M40 70 q10 10 20 0" {...S} fill="none" />,
-    <path key="1" d="M40 74 q10 -9 20 0" {...S} fill="none" />,
-    <path key="2" d="M42 70 h16" {...S} fill="none" />,
-    <g key="3" {...S}><path d="M38 68 q12 16 24 0 z" fill="#c9455a" /></g>,
-    <circle key="4" cx="50" cy="71" r="6" {...S} fill="#c9455a" />,
-    <g key="5" {...S} fill="none"><path d="M39 69 q6 8 11 0 q5 8 11 0" /></g>,
+    <path key="m0" d="M40 70 q10 10 20 0" {...S} fill="none" />,
+    <path key="m1" d="M40 74 q10 -9 20 0" {...S} fill="none" />,
+    <path key="m2" d="M42 70 h16" {...S} fill="none" />,
+    <g key="m3" {...S}><path d="M38 68 q12 16 24 0 z" fill="#c9455a" /></g>,
+    <circle key="m4" cx="50" cy="71" r="6" {...S} fill="#c9455a" />,
+    <g key="m5" {...S} fill="none"><path d="M39 69 q6 8 11 0 q5 8 11 0" /></g>,
   ][av.mouth] || null;
 
   const hair = [
     null,
-    <path key="1" d="M22 44 q4 -26 28 -26 q24 0 28 26 q-6 -12 -28 -12 q-22 0 -28 12 z" fill={hc} {...S} />,
-    <g key="2" fill={hc} {...S}><path d="M20 46 q2 -30 30 -30 q28 0 30 30 q-4 -6 -8 -4 q-6 -14 -22 -14 q-16 0 -22 14 q-4 -2 -8 4 z" />
+    <path key="h1" d="M22 44 q4 -26 28 -26 q24 0 28 26 q-6 -12 -28 -12 q-22 0 -28 12 z" fill={hc} {...S} />,
+    <g key="h2" fill={hc} {...S}><path d="M20 46 q2 -30 30 -30 q28 0 30 30 q-4 -6 -8 -4 q-6 -14 -22 -14 q-16 0 -22 14 q-4 -2 -8 4 z" />
       <path d="M20 46 q-2 22 4 30 q-2 -18 2 -26 z" /><path d="M80 46 q2 22 -4 30 q2 -18 -2 -26 z" /></g>,
-    <g key="3" fill={hc} {...S}><path d="M22 44 l6 -18 l8 12 l7 -18 l7 18 l8 -12 l6 18 q-20 -10 -42 0 z" /></g>,
-    <g key="4" fill={hc} {...S}><path d="M22 44 q4 -26 28 -26 q24 0 28 26 q-6 -12 -28 -12 q-22 0 -28 12 z" />
+    <g key="h3" fill={hc} {...S}><path d="M22 44 l6 -18 l8 12 l7 -18 l7 18 l8 -12 l6 18 q-20 -10 -42 0 z" /></g>,
+    <g key="h4" fill={hc} {...S}><path d="M22 44 q4 -26 28 -26 q24 0 28 26 q-6 -12 -28 -12 q-22 0 -28 12 z" />
       <path d="M78 40 q14 6 12 24 q-2 10 -10 10 q8 -14 -4 -30 z" /></g>,
-    <g key="5" fill={hc} {...S}><circle cx="32" cy="30" r="12" /><circle cx="50" cy="22" r="13" /><circle cx="68" cy="30" r="12" />
+    <g key="h5" fill={hc} {...S}><circle cx="32" cy="30" r="12" /><circle cx="50" cy="22" r="13" /><circle cx="68" cy="30" r="12" />
       <circle cx="26" cy="44" r="9" /><circle cx="74" cy="44" r="9" /></g>,
-    <g key="6" fill={hc} {...S}><path d="M24 42 q6 -24 26 -24 q20 0 26 24 q-8 -10 -26 -10 q-18 0 -26 10 z" />
+    <g key="h6" fill={hc} {...S}><path d="M24 42 q6 -24 26 -24 q20 0 26 24 q-8 -10 -26 -10 q-18 0 -26 10 z" />
       <path d="M50 12 q6 -8 12 -2 q-8 0 -10 6 z" /></g>,
   ][av.hair] || null;
 
   const acc = [
     null,
-    <g key="1" {...S} fill="none"><circle cx="38" cy="52" r="11" /><circle cx="62" cy="52" r="11" /><path d="M49 52 h2" /></g>,
-    <g key="2" {...S}><rect x="27" y="44" width="22" height="15" rx="4" fill="#2f2a26" /><rect x="51" y="44" width="22" height="15" rx="4" fill="#2f2a26" /><path d="M49 50 h2" /></g>,
-    <g key="3" {...S}><path d="M18 34 h64 l-6 -8 h-52 z" fill="#e4572e" /><path d="M28 26 q22 -14 44 0 z" fill="#e4572e" /></g>,
-    <g key="4" {...S}><path d="M66 26 l10 -8 l2 12 l10 4 l-11 5 l-1 11 l-8 -8 l-11 2 l5 -10 z" fill="#f2b705" /></g>,
-    <g key="5" {...S}><rect x="30" y="62" width="40" height="18" rx="7" fill="#7fd1e8" /><path d="M30 68 h40" /></g>,
+    <g key="a1" {...S} fill="none"><circle cx="38" cy="52" r="11" /><circle cx="62" cy="52" r="11" /><path d="M49 52 h2" /></g>,
+    <g key="a2" {...S}><rect x="27" y="44" width="22" height="15" rx="4" fill="#2f2a26" /><rect x="51" y="44" width="22" height="15" rx="4" fill="#2f2a26" /><path d="M49 50 h2" /></g>,
+    <g key="a3" {...S}><path d="M18 34 h64 l-6 -8 h-52 z" fill="#e4572e" /><path d="M28 26 q22 -14 44 0 z" fill="#e4572e" /></g>,
+    <g key="a4" {...S}><path d="M66 26 l10 -8 l2 12 l10 4 l-11 5 l-1 11 l-8 -8 l-11 2 l5 -10 z" fill="#f2b705" /></g>,
+    <g key="a5" {...S}><rect x="30" y="62" width="40" height="18" rx="7" fill="#7fd1e8" /><path d="M30 68 h40" /></g>,
   ][av.acc] || null;
 
   return (
@@ -1500,8 +1500,9 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang }) {
       n: st.turnIndex + 1,
       total: st.totalTurns,
     });
-    const t = setTimeout(() => setTurnFlash(null), 2000);
-    return () => clearTimeout(t);
+    // 변수명을 t로 두면 번역 함수 t()를 가려버리므로 쓰지 말 것
+    const timer = setTimeout(() => setTurnFlash(null), 2000);
+    return () => clearTimeout(timer);
   }, [st.phase, st.roundNo, st.turnIndex, st.currentDrawerId, st.you.id]);
 
   // 남은 시간이 5초 이하면 화면 가장자리를 붉게 점멸
@@ -1564,8 +1565,9 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang }) {
     if (!A) return undefined;
 
     setAnnounce({ key, ...A });
-    const t = setTimeout(() => setAnnounce(null), 2400);
-    return () => clearTimeout(t);
+    // 변수명을 t로 두면 번역 함수 t()를 가려버리므로 쓰지 말 것
+    const timer = setTimeout(() => setAnnounce(null), 2400);
+    return () => clearTimeout(timer);
   }, [st.phase, st.roundNo]);
 
   return (
