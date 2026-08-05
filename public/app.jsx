@@ -1382,7 +1382,9 @@ function Result({ st, socket }) {
         <div className="result-box">
           <div className="k">{t('topVote')}</div>
           <div className="v">
-            {r.tie ? t('tieNobody') : `\ (\\)`}
+            {r.tie
+              ? t('tieNobody')
+              : `${r.eliminated.nick} (${r.eliminated.count}${t('votes')})`}
           </div>
           <div className="k" style={{ marginTop: 4 }}>
             {r.tie
@@ -1405,10 +1407,13 @@ function Result({ st, socket }) {
               {r.guess.correct ? t('correct') : t('wrong')}
             </span>
           )}
-          <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-            {t('options')}
-            {r.guess.options.join(' · ')}
-          </div>
+          {/* 주관식 모드에서는 보기가 없으므로(options === null) 이 줄을 건너뛴다 */}
+          {r.guess.options && r.guess.options.length > 0 && (
+            <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+              {t('options')}
+              {r.guess.options.join(' · ')}
+            </div>
+          )}
         </div>
       )}
 
@@ -1826,9 +1831,61 @@ function App() {
   );
 }
 
+/**
+ * 어딘가에서 렌더링 오류가 나도 화면 전체가 빈 종이가 되지 않도록 하는 안전망.
+ * 오류 내용을 보여주고 새로고침으로 방에 다시 들어갈 수 있게 한다.
+ */
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { err: null };
+  }
+  static getDerivedStateFromError(err) {
+    return { err };
+  }
+  componentDidCatch(err, info) {
+    console.error('[그림 마피아] 렌더링 오류:', err, info);
+  }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return (
+      <div className="home">
+        <h2 style={{ marginTop: 0 }}>{LANG === 'en' ? 'Something broke' : '문제가 생겼어요'}</h2>
+        <p className="muted">
+          {LANG === 'en'
+            ? 'The screen failed to draw. Reloading will put you back in your room.'
+            : '화면을 그리는 중 오류가 났습니다. 새로고침하면 원래 방으로 돌아갑니다.'}
+        </p>
+        <pre
+          style={{
+            whiteSpace: 'pre-wrap',
+            fontSize: 12,
+            background: 'var(--paper)',
+            border: '2px solid var(--ink)',
+            borderRadius: 8,
+            padding: 10,
+            maxHeight: 160,
+            overflow: 'auto',
+          }}
+        >
+          {String((this.state.err && this.state.err.message) || this.state.err)}
+        </pre>
+        <button className="primary" style={{ width: '100%' }} onClick={() => location.reload()}>
+          {LANG === 'en' ? 'Reload' : '새로고침'}
+        </button>
+      </div>
+    );
+  }
+}
+
 const rootEl = document.getElementById('root');
+const tree = (
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
 if (ReactDOM.createRoot) {
-  ReactDOM.createRoot(rootEl).render(<App />);
+  ReactDOM.createRoot(rootEl).render(tree);
 } else {
-  ReactDOM.render(<App />, rootEl); // React 17 이하 UMD 대비
+  ReactDOM.render(tree, rootEl); // React 17 이하 UMD 대비
 }
