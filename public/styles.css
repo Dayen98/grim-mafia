@@ -579,6 +579,20 @@ canvas.drawable { border-color: var(--blue); box-shadow: 4px 5px 0 var(--blue); 
 .gp-opt.dim { opacity: .5; cursor: default; box-shadow: none; }
 .gp-textform { margin-top: 10px; }
 
+.hintbox {
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  margin: 10px auto 0; padding: 8px 14px; width: fit-content; max-width: 100%;
+  background: var(--paper-2); border: 2.5px dashed var(--ink); border-radius: var(--wob-2);
+  animation: hintPop .4s cubic-bezier(.2,1.5,.4,1);
+}
+.hint-tag {
+  font-family: 'Jua', var(--hand); font-size: 14px; letter-spacing: 1px;
+  background: var(--ink); color: var(--paper-2); padding: 1px 9px; border-radius: 999px;
+}
+.hint-item { font-size: 17px; }
+.hint-item b { font-family: 'Jua', var(--hand); font-size: 22px; color: var(--red); }
+@keyframes hintPop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
 .guessresult {
   padding: 12px 15px; border-radius: var(--wob-2); margin-bottom: 12px;
   border: 2.5px solid var(--ink); font-size: 18px;
@@ -618,19 +632,29 @@ canvas.drawable { border-color: var(--blue); box-shadow: 4px 5px 0 var(--blue); 
 /* ------------------------------------------------------------------ */
 
 @media (max-width: 768px) {
-  body { font-size: 17px; }
+  body { font-size: 16px; }
 
-  .game { padding: 8px; }
-  .panel { padding: 11px; margin-bottom: 10px; }
+  .game { padding: 6px; }
+  .panel { padding: 10px; margin-bottom: 8px; }
 
-  button { padding: 11px 16px; min-height: 46px; font-size: 17px; }
+  button { padding: 11px 16px; min-height: 46px; font-size: 16px; }
   input { padding: 11px 12px; min-height: 46px; font-size: 16px; }
 
-  .topbar { padding: 8px 11px; gap: 8px; }
-  .code-badge { font-size: 18px; letter-spacing: 2px; padding: 2px 10px; }
-  .phase-badge { font-size: 15px; padding: 2px 10px; }
-  .timer { font-size: 22px; }
-  .topbar button { padding: 6px 12px; min-height: 38px; font-size: 15px; }
+  /* 상단바를 한 줄로 눌러서 캔버스가 화면 위로 올라오게 한다 */
+  .topbar {
+    padding: 6px 8px; gap: 6px; margin-bottom: 8px;
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .topbar > * { flex: 0 0 auto; }
+  .code-badge { font-size: 15px; letter-spacing: 1px; padding: 1px 8px; }
+  .phase-badge { font-size: 13px; padding: 1px 8px; }
+  .timer { font-size: 19px; margin-left: auto; }
+  .topbar button { padding: 4px 10px; min-height: 32px; font-size: 13px; }
+  /* 게임 중 언어 전환은 자리를 많이 먹으므로 숨긴다 (홈 화면에서 바꿀 수 있음) */
+  .topbar .langtoggle { display: none; }
+
+  /* 캔버스는 화면 폭을 최대한 쓰도록 여백 제거 */
+  .canvaspanel { padding: 8px 6px; }
 
   .home { margin: 3vh auto; padding: 18px 16px; }
   .logo-ch { font-size: 48px; }

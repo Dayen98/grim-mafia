@@ -342,7 +342,7 @@ function createRoom(hostId, hostNick, hostAvatar) {
     result: null,
     deadline: null,
     timer: null,
-    botTimers: [],
+    timers: [],
   };
   rooms.set(code, room);
   addPlayer(room, hostId, hostNick, hostAvatar);
@@ -373,7 +373,7 @@ function connectedPlayers(room) {
 
 function destroyRoom(room) {
   clearPhaseTimer(room);
-  clearBotTimers(room);
+  clearRoomTimers(room);
   for (const p of room.players) if (p.reapTimer) clearTimeout(p.reapTimer);
   rooms.delete(room.code);
 }
@@ -445,8 +445,8 @@ function addBot(room) {
   return name;
 }
 
-/** 봇 타이머는 방이 사라지거나 대기실로 돌아갈 때 정리한다 */
-function botLater(room, ms, fn) {
+/** 방 안에서 도는 지연 작업(봇 행동·힌트 공개). 방이 끝나면 함께 정리된다. */
+function laterInRoom(room, ms, fn) {
   const t = setTimeout(() => {
     if (!rooms.has(room.code)) return;
     try {
@@ -455,12 +455,12 @@ function botLater(room, ms, fn) {
       console.error('[bot]', err);
     }
   }, ms);
-  room.botTimers.push(t);
+  room.timers.push(t);
 }
 
-function clearBotTimers(room) {
-  for (const t of room.botTimers) clearTimeout(t);
-  room.botTimers = [];
+function clearRoomTimers(room) {
+  for (const t of room.timers) clearTimeout(t);
+  room.timers = [];
 }
 
 /** 봇 차례: 아무 곡선이나 하나 긋고 턴을 넘긴다 */
@@ -499,21 +499,21 @@ function scheduleBots(room) {
   if (room.phase === 'draw' && room.round) {
     const turn = room.round.turnIndex;
     const cur = getPlayer(room, room.round.order[turn % room.round.order.length]);
-    if (cur && cur.isBot) botLater(room, 900 + randInt(1400), () => botDraw(room, turn));
+    if (cur && cur.isBot) laterInRoom(room, 900 + randInt(1400), () => botDraw(room, turn));
     return;
   }
 
   if (room.phase === 'discuss') {
     bots.forEach((b, i) => {
       if (Math.random() < 0.7) {
-        botLater(room, 1500 + i * 900 + randInt(2500), () => {
+        laterInRoom(room, 1500 + i * 900 + randInt(2500), () => {
           if (room.phase !== 'discuss') return;
           pushChat(room, { nick: b.nick, playerId: b.id, text: pick(BOT_LINES) });
           broadcast(room);
         });
       }
       // 사람이 "바로 투표" 를 누르면 봇들도 곧 따라 동의한다
-      botLater(room, 6000 + i * 1200 + randInt(4000), () => {
+      laterInRoom(room, 6000 + i * 1200 + randInt(4000), () => {
         if (room.phase !== 'discuss') return;
         if (!room.earlyVotes[b.id]) toggleEarlyVote(room, b.id);
       });
@@ -523,7 +523,7 @@ function scheduleBots(room) {
 
   if (room.phase === 'vote') {
     bots.forEach((b, i) => {
-      botLater(room, 1800 + i * 700 + randInt(3000), () => {
+      laterInRoom(room, 1800 + i * 700 + randInt(3000), () => {
         if (room.phase !== 'vote' || room.votes[b.id]) return;
         const targets = connectedPlayers(room).filter((p) => p.id !== b.id);
         if (!targets.length) return;
@@ -535,7 +535,7 @@ function scheduleBots(room) {
   }
 
   if (room.phase === 'guess' && room.guess && isBotId(room.guess.mafiaId)) {
-    botLater(room, 2500 + randInt(4000), () => {
+    laterInRoom(room, 2500 + randInt(4000), () => {
       if (room.phase !== 'guess' || !room.guess) return;
       const opts = room.guess.options || CATEGORIES[room.round.category] || ['???'];
       finalizeResult(room, pick(opts));
@@ -604,6 +604,7 @@ function publicState(room) {
           mafiaNick: room.guess.mafiaNick,
           mode: room.guess.mode,
           options: room.guess.options,
+          hint: room.guess.hint || {},
         }
       : null,
     chat: room.chat,
@@ -688,7 +689,7 @@ function startGame(room) {
     turnIndex: 0,
     laps: room.settings.laps > 0 ? room.settings.laps : lapsFor(players.length),
   };
-  clearBotTimers(room);
+  clearRoomTimers(room);
   room.strokes = [];
   room.openStroke = null;
   room.votes = {};
@@ -864,7 +865,30 @@ function startGuess(room, mafiaId) {
     mafiaNick: p ? p.nick : '마피아',
     mode,
     options,
+    hint: {}, // 시간이 지나면서 단계별로 채워진다
   };
+
+  // 주관식은 맨몸으로 맞히기 너무 어려우므로 시간이 지나면 힌트를 단계별로 공개한다.
+  // (단어가 미리 새지 않도록 반드시 서버에서 때가 됐을 때만 내려보낸다)
+  if (mode === 'text') {
+    const ms = room.settings.guessMs;
+    const chars = Array.from(word);
+    const roundNo = room.roundNo;
+
+    // 1단계: 남은 시간 1/3 지점 (30초면 10초 남았을 때) → 글자 수
+    laterInRoom(room, Math.max(1000, Math.round(ms * (2 / 3))), () => {
+      if (room.phase !== 'guess' || !room.guess || room.roundNo !== roundNo) return;
+      room.guess.hint = { ...room.guess.hint, len: chars.length };
+      broadcast(room);
+    });
+
+    // 2단계: 남은 시간 1/6 지점 (30초면 5초 남았을 때) → 첫 글자
+    laterInRoom(room, Math.max(2000, Math.round(ms * (5 / 6))), () => {
+      if (room.phase !== 'guess' || !room.guess || room.roundNo !== roundNo) return;
+      room.guess.hint = { ...room.guess.hint, len: chars.length, first: chars[0] };
+      broadcast(room);
+    });
+  }
 
   pushSystem(room, 'caught', { nick: room.guess.mafiaNick });
   setPhase(room, 'guess', room.settings.guessMs, () => finalizeResult(room, null));
@@ -966,7 +990,7 @@ function applyScores(room, pr, citizensWin, guessInfo) {
 
 function backToLobby(room, systemKey) {
   clearPhaseTimer(room);
-  clearBotTimers(room);
+  clearRoomTimers(room);
   room.round = null;
   room.result = null;
   room.votes = {};

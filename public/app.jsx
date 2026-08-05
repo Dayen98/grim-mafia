@@ -2,8 +2,10 @@
 
 const { useState, useEffect, useRef, useCallback } = React;
 
+// 4:3 — 세로가 넉넉해서 좁은 폰 화면에서도 그릴 공간이 나온다.
+// (좌표는 0~1로 정규화해 보내므로 모든 기기가 같은 비율이어야 그림이 안 틀어진다)
 const CANVAS_W = 900;
-const CANVAS_H = 560;
+const CANVAS_H = 675;
 
 /* ------------------------------------------------------------------ */
 /* 다국어 (한국어 / English)                                           */
@@ -53,6 +55,7 @@ const I18N = {
     gpPickHint: '카테고리 {cat} — 정답이라고 생각하는 단어를 고르세요',
     gpWaiting: '{nick} 님이 고르는 중입니다...', gpTyping: '{nick} 님이 입력하는 중입니다...',
     submit: '제출', gpPh: '예: 기린',
+    hintLen: '글자수', hintFirst: '첫 글자',
     winCitizens: '🎉 시민 승리!', winMafia: '🔪 마피아 승리!',
     answerWord: '정답 단어', mafiaWas: '마피아는', topVote: '최다 득표',
     tieNobody: '동점 (지목 실패)', nobodyPicked: '아무도 지목하지 못했습니다.',
@@ -166,6 +169,7 @@ const I18N = {
     gpPickHint: 'Category {cat} — pick the word you think it is',
     gpWaiting: '{nick} is choosing...', gpTyping: '{nick} is typing...',
     submit: 'Submit', gpPh: 'e.g. giraffe',
+    hintLen: 'Letters', hintFirst: 'Starts with',
     winCitizens: '🎉 Citizens win!', winMafia: '🔪 Impostor wins!',
     answerWord: 'The word', mafiaWas: 'Impostor', topVote: 'Most votes',
     tieNobody: 'Tie (nobody out)', nobodyPicked: 'Nobody was voted out.',
@@ -1272,6 +1276,30 @@ function VotePanel({ st, socket }) {
   );
 }
 
+const CIRCLED = ['⓪', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮'];
+const circled = (n) => CIRCLED[n] || '(' + n + ')';
+
+/** 시간이 지나면 서버가 단계별로 열어주는 힌트 */
+function HintBox({ hint }) {
+  if (!hint || (!hint.len && !hint.first)) return null;
+  return (
+    <div className="hintbox">
+      <span className="hint-tag">HINT</span>
+      {hint.len && (
+        <span className="hint-item">
+          {t('hintLen')} <b>{circled(hint.len)}</b>
+        </span>
+      )}
+      {hint.first && (
+        <span className="hint-item">
+          {t('hintFirst')} <b>{hint.first}</b>
+          {'○'.repeat(Math.max(0, (hint.len || 1) - 1))}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function GuessPanel({ st, socket }) {
   const g = st.guess;
   const [typed, setTyped] = useState('');
@@ -1288,6 +1316,7 @@ function GuessPanel({ st, socket }) {
           <br />
           {t('gpLead2')}
         </p>
+        <HintBox hint={g.hint} />
         {mine ? (
           <form
             className="gp-textform"
@@ -1513,6 +1542,18 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang }) {
   // 남은 시간이 5초 이하면 화면 가장자리를 붉게 점멸
   const urgent = st.phase === 'draw' && remain !== null && remain <= 5;
 
+  // 폰에서는 캔버스가 화면 아래에 있어 내 차례인 걸 놓치기 쉽다.
+  // 내 차례가 되면 캔버스를 자동으로 화면에 올려준다.
+  const canvasBoxRef = useRef(null);
+  useEffect(() => {
+    if (!myTurn || !canvasBoxRef.current) return;
+    try {
+      canvasBoxRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (_) {
+      canvasBoxRef.current.scrollIntoView();
+    }
+  }, [myTurn]);
+
   // 새 채팅이 오면 그 사람 캐릭터 옆에 말풍선을 잠깐 띄운다
   const [bubbles, setBubbles] = useState({});
   const seenChatRef = useRef(undefined);
@@ -1644,7 +1685,7 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang }) {
           {st.phase === 'result' && <Result st={st} socket={socket} />}
 
           {showCanvas && st.phase !== 'reveal' && (
-            <div className="panel">
+            <div className="panel canvaspanel" ref={canvasBoxRef}>
               {st.you.role && st.phase !== 'result' && (
                 <div style={{ marginBottom: 10 }}>
                   <RoleStrip you={st.you} />
