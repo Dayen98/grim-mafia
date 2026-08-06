@@ -13,7 +13,7 @@ const CANVAS_H = 675;
 
 const I18N = {
   ko: {
-    tagline: '누가 마피아인 걸 속이고 그릴까?',
+    tagline: '🎨 친구들과 한 획씩 그림을 이어 그리며 마피아를 찾아라!',
     nick: '닉네임 (최대 12자)', nickPh: '예: 홍길동',
     myChar: '내 캐릭터', createRoom: '새 방 만들기', roomCode: '방 코드', enter: '입장',
     connecting: '서버에 연결하는 중...', needNick: '닉네임을 입력해주세요.', reqFail: '요청에 실패했습니다.',
@@ -127,7 +127,7 @@ const I18N = {
   },
 
   en: {
-    tagline: 'Who is secretly the impostor?',
+    tagline: '🎨 Draw one stroke each with friends and find the impostor!',
     nick: 'Nickname (max 12)', nickPh: 'e.g. Alex',
     myChar: 'My character', createRoom: 'Create room', roomCode: 'Room code', enter: 'Join',
     connecting: 'Connecting to server...', needNick: 'Please enter a nickname.', reqFail: 'Request failed.',
