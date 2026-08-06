@@ -335,6 +335,7 @@ function createRoom(hostId, hostNick, hostAvatar, isPublic) {
     openStroke: null,
     strokeSeq: 0,
     chat: [],
+    ready: {}, // 대기실에서 준비 완료를 누른 사람 (방장은 제외)
     votes: {}, // voterId -> targetId
     settings: defaultSettings(), // 방장이 대기실에서 조정
     scoreHistory: {}, // nick -> score (퇴장/새로고침해도 점수 복원용)
@@ -406,6 +407,10 @@ function remapPlayerId(room, oldId, newId) {
     nextVotes[voter === oldId ? newId : voter] = target === oldId ? newId : target;
   }
   room.votes = nextVotes;
+  if (room.ready[oldId]) {
+    delete room.ready[oldId];
+    room.ready[newId] = true;
+  }
   for (const s of room.strokes) if (s.playerId === oldId) s.playerId = newId;
   if (room.openStroke && room.openStroke.playerId === oldId) room.openStroke.playerId = newId;
 }
@@ -601,6 +606,9 @@ function publicState(room) {
     laps: r ? r.laps : CONFIG.LAPS,
     currentDrawerId: room.phase === 'draw' && r ? r.order[r.turnIndex % r.order.length] : null,
     votedIds: Object.keys(room.votes),
+    readyIds: room.players.filter((p) => p.isBot || room.ready[p.id]).map((p) => p.id),
+    readyCount: readyCounts(room),
+    allReady: othersReady(room),
     earlyVoteIds: Object.keys(room.earlyVotes),
     guess: room.guess
       ? {
@@ -645,6 +653,23 @@ function privateFor(room, player) {
             })
             .filter(Boolean)
         : [],
+  };
+}
+
+/**
+ * 방장을 뺀 접속자들이 모두 준비를 눌렀는지.
+ * 봇은 항상 준비된 것으로 본다. 방장 혼자면 바로 시작할 수 있다.
+ */
+function othersReady(room) {
+  const others = connectedPlayers(room).filter((p) => p.id !== room.hostId);
+  return others.every((p) => p.isBot || room.ready[p.id]);
+}
+
+function readyCounts(room) {
+  const others = connectedPlayers(room).filter((p) => p.id !== room.hostId);
+  return {
+    ready: others.filter((p) => p.isBot || room.ready[p.id]).length,
+    total: others.length,
   };
 }
 
@@ -729,6 +754,7 @@ function startGame(room) {
     laps: room.settings.laps > 0 ? room.settings.laps : lapsFor(players.length),
   };
   clearRoomTimers(room);
+  room.ready = {}; // 다음 대기실에서 다시 준비를 눌러야 한다
   room.strokes = [];
   room.openStroke = null;
   room.votes = {};
@@ -1033,6 +1059,7 @@ function backToLobby(room, systemKey) {
   room.round = null;
   room.result = null;
   room.votes = {};
+  room.ready = {};
   room.earlyVotes = {};
   room.guess = null;
   room.pendingResult = null;
@@ -1209,9 +1236,21 @@ io.on('connection', (socket) => {
     broadcast(room);
   });
 
+  /** 대기실 준비 토글 (방장은 시작 버튼을 쓰므로 대상 아님) */
+  socket.on('player:ready', () => {
+    const room = roomOf();
+    if (!room || room.phase !== 'lobby') return;
+    const me = getPlayer(room, socket.id);
+    if (!me || me.id === room.hostId) return;
+    if (room.ready[socket.id]) delete room.ready[socket.id];
+    else room.ready[socket.id] = true;
+    broadcast(room);
+  });
+
   socket.on('game:start', () => {
     const room = roomOf();
     if (!room || room.hostId !== socket.id || room.phase !== 'lobby') return;
+    if (!othersReady(room)) return; // 전원 준비 전에는 시작 불가
     startGame(room);
   });
 
@@ -1459,6 +1498,7 @@ function removePlayer(room, playerId, reasonKey) {
   const p = getPlayer(room, playerId);
   if (!p) return;
   if (p.reapTimer) clearTimeout(p.reapTimer);
+  delete room.ready[playerId];
   room.players = room.players.filter((x) => x.id !== playerId);
   pushSystem(room, reasonKey || 'left', { nick: p.nick });
 
@@ -1509,6 +1549,7 @@ function handleLeave(socket, permanent) {
 
   delete room.votes[socket.id];
   delete room.earlyVotes[socket.id];
+  delete room.ready[socket.id];
 
   if (permanent) {
     removePlayer(room, socket.id, 'left');

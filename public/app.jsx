@@ -69,6 +69,10 @@ const I18N = {
     reportConfirm: '{nick} 님을 신고할까요? 방장에게 신고 누적이 표시됩니다.',
     kickConfirm: '{nick} 님을 강퇴할까요? 이 방에 다시 들어올 수 없습니다.',
     kickedMsg: '방장에 의해 방에서 강퇴되었습니다.',
+    readyGo: '준비 완료 누르기', readyDone: '준비 완료 (누르면 취소)',
+    readyStatus: '준비 {a}/{b}', readyHint: '모두 준비하면 방장이 시작할 수 있어요',
+    waitReady: '준비 대기 중 {a}/{b}',
+    rdReady: '준비', rdWaiting: '대기', rdHost: '방장',
     advanced: '고급 설정',
     sVisibility: '방 공개 여부', sVisibilityH: '비공개는 코드로만 입장',
     winCitizens: '🎉 시민 승리!', winMafia: '🔪 마피아 승리!',
@@ -199,6 +203,10 @@ const I18N = {
     reportConfirm: 'Report {nick}? The host will see the report count.',
     kickConfirm: 'Kick {nick}? They will not be able to rejoin this room.',
     kickedMsg: 'You were kicked from the room by the host.',
+    readyGo: 'I am ready', readyDone: 'Ready (tap to cancel)',
+    readyStatus: 'Ready {a}/{b}', readyHint: 'The host can start once everyone is ready',
+    waitReady: 'Waiting for ready {a}/{b}',
+    rdReady: 'Ready', rdWaiting: 'Waiting', rdHost: 'Host',
     advanced: 'Advanced settings',
     sVisibility: 'Room visibility', sVisibilityH: 'Private = code only',
     winCitizens: '🎉 Citizens win!', winMafia: '🔪 Impostor wins!',
@@ -1000,6 +1008,16 @@ function PlayerList({ st, socket, bubbles }) {
                 {p.nick}
                 {p.id === me.id && t('me')}
               </span>
+              {/* 대기실에서는 준비 여부를 프로필 옆에 표시 (방장은 대상 아님) */}
+              {st.phase === 'lobby' &&
+                p.connected &&
+                (p.isHost ? (
+                  <span className="rdbadge host">{t('rdHost')}</span>
+                ) : (
+                  <span className={'rdbadge' + (st.readyIds.includes(p.id) ? ' on' : '')}>
+                    {st.readyIds.includes(p.id) ? '✅ ' + t('rdReady') : '⏳ ' + t('rdWaiting')}
+                  </span>
+                ))}
               {st.roundNo > 0 && <span className="ptbadge">{p.score}{t('pts')}</span>}
               <span className="tag">
                 {p.isBot && '🤖'}
@@ -1354,7 +1372,10 @@ function SettingsPanel({ st, socket }) {
 function Lobby({ st, socket }) {
   const ready = st.players.filter((p) => p.connected).length;
   const botCount = st.players.filter((p) => p.isBot).length;
-  const canStart = st.you.isHost && ready >= st.minPlayers && ready <= st.maxPlayers;
+  const enoughPeople = ready >= st.minPlayers && ready <= st.maxPlayers;
+  // 방장을 뺀 전원이 준비를 눌러야 시작할 수 있다
+  const canStart = st.you.isHost && enoughPeople && st.allReady;
+  const iAmReady = st.readyIds.includes(st.you.id);
   const link = location.origin + '/#' + st.code;
 
   return (
@@ -1378,8 +1399,15 @@ function Lobby({ st, socket }) {
       {st.you.isHost ? (
         <React.Fragment>
           <button className="primary" disabled={!canStart} onClick={() => socket.emit('game:start')}>
-            {canStart ? t('startGame') : t('needMore', { n: st.minPlayers })}
+            {enoughPeople
+              ? canStart
+                ? t('startGame')
+                : t('waitReady', { a: st.readyCount.ready, b: st.readyCount.total })
+              : t('needMore', { n: st.minPlayers })}
           </button>
+          {enoughPeople && !canStart && (
+            <p className="muted readyhint">{t('readyHint')}</p>
+          )}
 
           <div className="botbar">
             <span className="bot-title">{t('soloTitle')}</span>
@@ -1401,7 +1429,19 @@ function Lobby({ st, socket }) {
           </div>
         </React.Fragment>
       ) : (
-        <p className="muted">{t('waitHost')}</p>
+        <React.Fragment>
+          <button
+            className={'readybtn' + (iAmReady ? ' on' : '')}
+            onClick={() => socket.emit('player:ready')}
+          >
+            {iAmReady ? '✅ ' + t('readyDone') : '🙋 ' + t('readyGo')}
+          </button>
+          <p className="muted readyhint">
+            {t('readyStatus', { a: st.readyCount.ready, b: st.readyCount.total })}
+            {' · '}
+            {t('waitHost')}
+          </p>
+        </React.Fragment>
       )}
 
       <div style={{ marginTop: 20, textAlign: 'left' }}>

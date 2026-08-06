@@ -341,6 +341,24 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 }
 .kicknotice button { margin-left: auto; padding: 0 9px; min-height: 0; font-size: 14px; box-shadow: none; }
 
+/* ---------- 준비(레디) ---------- */
+
+.readybtn {
+  width: 100%; padding: 16px; font-family: 'Jua', var(--hand); font-size: 22px;
+  border: 3px solid var(--ink); border-radius: var(--wob);
+  box-shadow: 4px 5px 0 rgba(47,42,38,.85);
+}
+.readybtn.on { background: var(--green); color: #fff; }
+.readyhint { font-size: 14px; margin: 8px 0 0; }
+
+.rdbadge {
+  font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px;
+  border: 2px solid rgba(47,42,38,.3); background: var(--paper-3); color: var(--ink-soft);
+  white-space: nowrap;
+}
+.rdbadge.on { background: var(--green); color: #fff; border-color: var(--ink); }
+.rdbadge.host { background: var(--yellow); color: var(--ink); border-color: var(--ink); }
+
 /* ---------- 신고 / 강퇴 ---------- */
 
 .modbtns { display: flex; gap: 3px; }
