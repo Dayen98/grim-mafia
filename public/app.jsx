@@ -13,7 +13,7 @@ const CANVAS_H = 675;
 
 const I18N = {
   ko: {
-    tagline: '🎨 친구들과 한 획씩 그림을 이어 그리며 마피아를 찾아라!',
+    tagline: '🎨 친구들과 한 획씩 그림을 이어 그리며\n마피아를 찾아라!',
     nick: '닉네임 (최대 12자)', nickPh: '예: 홍길동',
     myChar: '내 캐릭터', createRoom: '새 방 만들기', roomCode: '방 코드', enter: '입장',
     connecting: '서버에 연결하는 중...', needNick: '닉네임을 입력해주세요.', reqFail: '요청에 실패했습니다.',
@@ -56,6 +56,21 @@ const I18N = {
     gpWaiting: '{nick} 님이 고르는 중입니다...', gpTyping: '{nick} 님이 입력하는 중입니다...',
     submit: '제출', gpPh: '예: 기린',
     hintLen: '글자수', hintFirst: '첫 글자',
+    goLobby: '시작하기', changeChar: '캐릭터 바꾸기',
+    quickStart: '빠른 시작', quickStartSub: '자리 있는 방에 바로 입장 · 없으면 새 방 생성',
+    createGo: '이 설정으로 방 만들기', codePh: '방 코드 입력',
+    visPublic: '공개', visPrivate: '비공개',
+    visPublicDesc: '누구나 빠른 시작·방 목록으로 들어올 수 있어요.',
+    visPrivateDesc: '목록에 안 보이고, 코드를 아는 사람만 들어올 수 있어요.',
+    browseRooms: '방 둘러보기',
+    noRooms: '지금 열린 방이 없어요. 빠른 시작으로 바로 플레이하세요!',
+    rcWaiting: '대기중', rcPlaying: '게임중', rcJoin: '입장', rcInGame: '게임 진행 중',
+    report: '신고', kick: '강퇴', reported: '신고 누적',
+    reportConfirm: '{nick} 님을 신고할까요? 방장에게 신고 누적이 표시됩니다.',
+    kickConfirm: '{nick} 님을 강퇴할까요? 이 방에 다시 들어올 수 없습니다.',
+    kickedMsg: '방장에 의해 방에서 강퇴되었습니다.',
+    advanced: '고급 설정',
+    sVisibility: '방 공개 여부', sVisibilityH: '비공개는 코드로만 입장',
     winCitizens: '🎉 시민 승리!', winMafia: '🔪 마피아 승리!',
     answerWord: '정답 단어', mafiaWas: '마피아는', topVote: '최다 득표',
     tieNobody: '동점 (지목 실패)', nobodyPicked: '아무도 지목하지 못했습니다.',
@@ -123,11 +138,12 @@ const I18N = {
       scoreReset: '점수를 초기화했습니다.',
       botsIn: '🤖 연습용 봇 {names} 이(가) 들어왔습니다.',
       botOut: '🤖 {nick} 이(가) 나갔습니다.',
+      kicked: '⛔ {nick} 님이 방장에게 강퇴되었습니다.',
     },
   },
 
   en: {
-    tagline: '🎨 Draw one stroke each with friends and find the impostor!',
+    tagline: '🎨 Draw one stroke each with friends\nand find the impostor!',
     nick: 'Nickname (max 12)', nickPh: 'e.g. Alex',
     myChar: 'My character', createRoom: 'Create room', roomCode: 'Room code', enter: 'Join',
     connecting: 'Connecting to server...', needNick: 'Please enter a nickname.', reqFail: 'Request failed.',
@@ -170,6 +186,21 @@ const I18N = {
     gpWaiting: '{nick} is choosing...', gpTyping: '{nick} is typing...',
     submit: 'Submit', gpPh: 'e.g. giraffe',
     hintLen: 'Letters', hintFirst: 'Starts with',
+    goLobby: 'Continue', changeChar: 'Change character',
+    quickStart: 'Quick start', quickStartSub: 'Jump into an open room, or make one',
+    createGo: 'Create room with these settings', codePh: 'Enter room code',
+    visPublic: 'Public', visPrivate: 'Private',
+    visPublicDesc: 'Anyone can join via quick start or the room list.',
+    visPrivateDesc: 'Hidden from the list — only people with the code can join.',
+    browseRooms: 'Browse rooms',
+    noRooms: 'No rooms open right now. Hit Quick start to play!',
+    rcWaiting: 'Waiting', rcPlaying: 'In game', rcJoin: 'Join', rcInGame: 'In progress',
+    report: 'Report', kick: 'Kick', reported: 'Reports',
+    reportConfirm: 'Report {nick}? The host will see the report count.',
+    kickConfirm: 'Kick {nick}? They will not be able to rejoin this room.',
+    kickedMsg: 'You were kicked from the room by the host.',
+    advanced: 'Advanced settings',
+    sVisibility: 'Room visibility', sVisibilityH: 'Private = code only',
     winCitizens: '🎉 Citizens win!', winMafia: '🔪 Impostor wins!',
     answerWord: 'The word', mafiaWas: 'Impostor', topVote: 'Most votes',
     tieNobody: 'Tie (nobody out)', nobodyPicked: 'Nobody was voted out.',
@@ -237,6 +268,7 @@ const I18N = {
       scoreReset: 'Scores have been reset.',
       botsIn: '🤖 Practice bots {names} joined.',
       botOut: '🤖 {nick} left.',
+      kicked: '⛔ {nick} was kicked by the host.',
     },
   },
 };
@@ -668,16 +700,192 @@ function Logo({ small }) {
         <path d="M8 15 C 70 4, 140 22, 210 10 C 250 3, 275 12, 293 8" />
       </svg>
 
-      <span className="logo-tag">{t('tagline')}</span>
+      <span className="logo-tag">
+        {t('tagline')
+          .split('\n')
+          .map((line, i) => (
+            <span key={i} className="tagline-line">
+              {line}
+            </span>
+          ))}
+      </span>
     </div>
   );
 }
 
-function Home({ socket, connected, onLang }) {
-  const [nick, setNick] = useState(() => localStorage.getItem('gm_nick') || '');
-  const [code, setCode] = useState(() => (location.hash || '').replace('#', '').toUpperCase());
+/* ------------------------------------------------------------------ */
+/* 로비 (캐릭터 만든 뒤 들어오는 화면)                                  */
+/* ------------------------------------------------------------------ */
+
+function RoomBrowser({ socket, onJoin, busy }) {
+  const [list, setList] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      socket.emit('lobby:list', {}, (res) => {
+        if (!alive) return;
+        setLoading(false);
+        setList(res && res.ok ? res.rooms : []);
+      });
+    };
+    load();
+    const iv = setInterval(load, 3000); // 열려 있는 동안만 갱신
+    return () => {
+      alive = false;
+      clearInterval(iv);
+    };
+  }, [socket]);
+
+  if (loading && !list) return <p className="muted center">{t('loading')}</p>;
+  if (!list || list.length === 0) return <p className="emptyrooms">{t('noRooms')}</p>;
+
+  return (
+    <div className="roomcards">
+      {list.map((r) => (
+        <div key={r.code} className={'roomcard' + (r.joinable ? '' : ' busy')}>
+          <div className="rc-top">
+            <span className="rc-code">{r.code}</span>
+            <span className={'rc-state' + (r.waiting ? ' waiting' : '')}>
+              {r.waiting ? t('rcWaiting') : t('rcPlaying')}
+            </span>
+          </div>
+          <div className="rc-meta">
+            <span className="rc-badge">
+              👤 {r.players}/{r.max}
+            </span>
+            <span className="rc-badge">⏱ {Math.round(r.turnMs / 1000)}{t('sec')}</span>
+            <span className="rc-badge">
+              🗂 {r.customOnly ? t('sCustom') : r.categories.length ? r.categories.map(catName).join('·') : t('sAll')}
+            </span>
+          </div>
+          <button
+            className={r.joinable ? 'primary' : ''}
+            disabled={!r.joinable || busy}
+            onClick={() => onJoin(r.code)}
+          >
+            {r.joinable ? t('rcJoin') : t('rcInGame')}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LobbyScreen({ socket, connected, nick, avatar, onLang, onBack, onEnter, kicked, onDismissKicked }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState(() => (location.hash || '').replace('#', '').toUpperCase());
+  const [isPublic, setIsPublic] = useState(true);
+  const [showBrowse, setShowBrowse] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const go = (event, extra) => {
+    if (!connected) return;
+    setError('');
+    setBusy(true);
+    socket.emit(event, { nick, avatar, ...extra }, (res) => {
+      setBusy(false);
+      if (!res || !res.ok) {
+        setError((res && res.error) || t('reqFail'));
+        return;
+      }
+      sessionStorage.setItem('gm_session', JSON.stringify({ code: res.code, nick }));
+      location.hash = res.code;
+      if (onEnter) onEnter();
+    });
+  };
+
+  return (
+    <div className="home lobbyscreen">
+      <div className="lobbytop">
+        <button className="backbtn" onClick={onBack}>
+          ‹ {t('changeChar')}
+        </button>
+        <LangToggle onChange={onLang} compact />
+      </div>
+
+      <div className="whoami">
+        <Avatar a={avatar} size={52} />
+        <span className="whoami-nick">{nick}</span>
+      </div>
+
+      {kicked && (
+        <div className="kicknotice">
+          {t('kickedMsg')}
+          <button onClick={onDismissKicked}>✕</button>
+        </div>
+      )}
+
+      <button className="quickbtn" disabled={!connected || busy} onClick={() => go('room:quick')}>
+        <span className="qb-main">⚡ {t('quickStart')}</span>
+        <span className="qb-sub">{t('quickStartSub')}</span>
+      </button>
+
+      <div className="lobbyrow">
+        <button disabled={busy} onClick={() => setShowCreate((v) => !v)}>
+          ➕ {t('createRoom')}
+        </button>
+      </div>
+
+      {showCreate && (
+        <div className="subpanel">
+          <div className="vistoggle">
+            <button
+              type="button"
+              className={'chip' + (isPublic ? ' on' : '')}
+              onClick={() => setIsPublic(true)}
+            >
+              🌐 {t('visPublic')}
+              <em className="defmark">{t('sDefault')}</em>
+            </button>
+            <button
+              type="button"
+              className={'chip' + (!isPublic ? ' on' : '')}
+              onClick={() => setIsPublic(false)}
+            >
+              🔒 {t('visPrivate')}
+            </button>
+          </div>
+          <p className="muted vis-desc">{isPublic ? t('visPublicDesc') : t('visPrivateDesc')}</p>
+          <button className="primary" style={{ width: '100%' }} disabled={busy} onClick={() => go('room:create', { isPublic })}>
+            {t('createGo')}
+          </button>
+        </div>
+      )}
+
+      <div className="lobbyrow">
+        <input
+          value={code}
+          maxLength={6}
+          placeholder={t('codePh')}
+          style={{ textTransform: 'uppercase', letterSpacing: 3, fontFamily: 'monospace' }}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          onKeyDown={(e) => e.key === 'Enter' && code.trim() && go('room:join', { code })}
+        />
+        <button style={{ flex: '0 0 96px' }} disabled={busy || !code.trim()} onClick={() => go('room:join', { code })}>
+          {t('enter')}
+        </button>
+      </div>
+
+      <div className="error">{connected ? error : t('connecting')}</div>
+
+      <button className="folder" onClick={() => setShowBrowse((v) => !v)}>
+        {showBrowse ? '▾' : '▸'} 🔍 {t('browseRooms')}
+      </button>
+      {showBrowse && (
+        <div className="subpanel">
+          <RoomBrowser socket={socket} busy={busy} onJoin={(c) => go('room:join', { code: c })} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Home({ socket, connected, onLang, onReady }) {
+  const [nick, setNick] = useState(() => localStorage.getItem('gm_nick') || '');
+  const [error, setError] = useState('');
   const [avatar, setAvatar] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('gm_avatar') || 'null');
@@ -692,7 +900,7 @@ function Home({ socket, connected, onLang }) {
     localStorage.setItem('gm_avatar', JSON.stringify(a));
   };
 
-  const go = (event, payload) => {
+  const enter = () => {
     const n = nick.trim();
     if (!n) {
       setError(t('needNick'));
@@ -701,17 +909,7 @@ function Home({ socket, connected, onLang }) {
     localStorage.setItem('gm_nick', n);
     localStorage.setItem('gm_avatar', JSON.stringify(avatar));
     setError('');
-    setBusy(true);
-    socket.emit(event, { nick: n, avatar, ...payload }, (res) => {
-      setBusy(false);
-      if (!res || !res.ok) {
-        setError((res && res.error) || t('reqFail'));
-        return;
-      }
-      // 연결이 잠깐 끊겨도 자동으로 돌아올 수 있게 기록
-      sessionStorage.setItem('gm_session', JSON.stringify({ code: res.code, nick: n }));
-      location.hash = res.code;
-    });
+    onReady(n, avatar);
   };
 
   return (
@@ -726,6 +924,7 @@ function Home({ socket, connected, onLang }) {
           maxLength={12}
           placeholder={t('nickPh')}
           onChange={(e) => setNick(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && enter()}
         />
       </div>
 
@@ -734,37 +933,9 @@ function Home({ socket, connected, onLang }) {
         <AvatarEditor value={avatar} onChange={changeAvatar} />
       </div>
 
-      <button
-        className="primary"
-        style={{ width: '100%' }}
-        disabled={!connected || busy}
-        onClick={() => go('room:create')}
-      >
-        {t('createRoom')}
+      <button className="primary" style={{ width: '100%' }} disabled={!connected} onClick={enter}>
+        {t('goLobby')}
       </button>
-
-      <div className="divider" />
-
-      <div className="field">
-        <label>{t('roomCode')}</label>
-        <div className="row">
-          <input
-            value={code}
-            maxLength={6}
-            placeholder="ABCDE"
-            style={{ textTransform: 'uppercase', letterSpacing: 3, fontFamily: 'monospace' }}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === 'Enter' && go('room:join', { code })}
-          />
-          <button
-            style={{ flex: '0 0 90px' }}
-            disabled={!connected || busy || !code.trim()}
-            onClick={() => go('room:join', { code })}
-          >
-            {t('enter')}
-          </button>
-        </div>
-      </div>
 
       <div className="error">{connected ? error : t('connecting')}</div>
 
@@ -792,6 +963,10 @@ function PlayerList({ st, socket, bubbles }) {
   const orderIndex = (id) => {
     const i = st.order.indexOf(id);
     return i < 0 ? null : i + 1;
+  };
+  const reportOf = (id) => {
+    const r = (me.reportCounts || []).find((x) => x.id === id);
+    return r ? r.count : 0;
   };
 
   return (
@@ -833,6 +1008,37 @@ function PlayerList({ st, socket, bubbles }) {
                 {st.phase === 'vote' && st.votedIds.includes(p.id) && ' ✅'}
                 {p.id === st.currentDrawerId && ' ✏️'}
               </span>
+              {reportOf(p.id) > 0 && me.isHost && (
+                <span className="repbadge" title={t('reported')}>
+                  🚩{reportOf(p.id)}
+                </span>
+              )}
+              {p.id !== me.id && !p.isBot && (
+                <span className="modbtns">
+                  <button
+                    className="modbtn"
+                    title={t('report')}
+                    onClick={() => {
+                      if (!window.confirm(t('reportConfirm', { nick: p.nick }))) return;
+                      socket.emit('player:report', { targetId: p.id }, () => {});
+                    }}
+                  >
+                    🚩
+                  </button>
+                  {me.isHost && (
+                    <button
+                      className="modbtn kick"
+                      title={t('kick')}
+                      onClick={() => {
+                        if (!window.confirm(t('kickConfirm', { nick: p.nick }))) return;
+                        socket.emit('room:kick', { targetId: p.id });
+                      }}
+                    >
+                      ⛔
+                    </button>
+                  )}
+                </span>
+              )}
               {st.phase === 'vote' && p.id !== me.id && p.connected && (
                 <button
                   className={me.myVote === p.id ? 'primary' : ''}
@@ -975,6 +1181,7 @@ function RuleBook({ compact }) {
 function SettingsPanel({ st, socket }) {
   const s = st.settings;
   const host = st.you.isHost;
+  const [adv, setAdv] = useState(false);
   const set = (patch) => host && socket.emit('settings:set', patch);
 
   // "1인당 획 수"가 헷갈리지 않도록 실제 총 획 수를 같이 보여준다
@@ -1040,26 +1247,6 @@ function SettingsPanel({ st, socket }) {
         />
       </Row>
 
-      <Row label={t('sVote')} hint={t('sVoteH')}>
-        <Choice
-          field="voteMs"
-          def={30000}
-          opts={[15000, 30000, 45000, 60000].map((v) => [v, v / 1000 + t('sec')])}
-        />
-      </Row>
-
-      <Row label={t('sGuessMode')} hint={t('sGuessModeH')}>
-        <Choice field="guessMode" def="text" opts={[['text', t('sText')], ['choice', t('sChoice')]]} />
-      </Row>
-
-      <Row label={t('sGuessMs')}>
-        <Choice
-          field="guessMs"
-          def={30000}
-          opts={[15000, 30000, 45000, 60000].map((v) => [v, v / 1000 + t('sec')])}
-        />
-      </Row>
-
       <Row label={t('sCats')} hint={t('sCatsH')}>
         <span className="chips">
           <button
@@ -1109,6 +1296,57 @@ function SettingsPanel({ st, socket }) {
           {t('sCustomOnly', { n: s.customWords.length })}
         </label>
       </div>
+
+      {/* 자주 안 바꾸는 것들은 접어둔다. 전부 기본값이 채워져 있어 안 열어도 된다. */}
+      <button className="folder" onClick={() => setAdv((v) => !v)}>
+        {adv ? '▾' : '▸'} {t('advanced')}
+      </button>
+
+      {adv && (
+        <div className="advbox">
+          <Row label={t('sVote')} hint={t('sVoteH')}>
+            <Choice
+              field="voteMs"
+              def={30000}
+              opts={[15000, 30000, 45000, 60000].map((v) => [v, v / 1000 + t('sec')])}
+            />
+          </Row>
+
+          <Row label={t('sGuessMode')} hint={t('sGuessModeH')}>
+            <Choice field="guessMode" def="text" opts={[['text', t('sText')], ['choice', t('sChoice')]]} />
+          </Row>
+
+          <Row label={t('sGuessMs')}>
+            <Choice
+              field="guessMs"
+              def={30000}
+              opts={[15000, 30000, 45000, 60000].map((v) => [v, v / 1000 + t('sec')])}
+            />
+          </Row>
+
+          <Row label={t('sVisibility')} hint={t('sVisibilityH')}>
+            <span className="chips">
+              <button
+                type="button"
+                disabled={!host}
+                className={'chip' + (st.isPublic ? ' on' : '')}
+                onClick={() => host && socket.emit('room:visibility', { isPublic: true })}
+              >
+                🌐 {t('visPublic')}
+                <em className="defmark">{t('sDefault')}</em>
+              </button>
+              <button
+                type="button"
+                disabled={!host}
+                className={'chip' + (!st.isPublic ? ' on' : '')}
+                onClick={() => host && socket.emit('room:visibility', { isPublic: false })}
+              >
+                🔒 {t('visPrivate')}
+              </button>
+            </span>
+          </Row>
+        </div>
+      )}
     </div>
   );
 }
@@ -1767,6 +2005,17 @@ function App() {
   const [st, setSt] = useState(null);
   const [offset, setOffset] = useState(0);
   const [, setLangTick] = useState(LANG);
+  const [screen, setScreen] = useState('home'); // home → lobby → (방)
+  const [kickedNotice, setKickedNotice] = useState(false);
+  const [me, setMe] = useState(() => {
+    let av = null;
+    try {
+      av = JSON.parse(localStorage.getItem('gm_avatar') || 'null');
+    } catch (_) {
+      av = null;
+    }
+    return { nick: localStorage.getItem('gm_nick') || '', avatar: av || defaultAvatar() };
+  });
 
   // LANG은 모듈 변수라, 바꾼 뒤 App을 다시 그리면 t()가 새 언어로 전부 반영된다
   const changeLang = useCallback((l) => {
@@ -1843,6 +2092,17 @@ function App() {
       s.__cur = null;
     });
 
+    // 강퇴당하면 로비로 돌려보낸다
+    s.on('kicked', () => {
+      sessionStorage.removeItem('gm_session');
+      location.hash = '';
+      strokesRef.current = [];
+      dirtyRef.current = true;
+      setSt(null);
+      setScreen('lobby');
+      setKickedNotice(true);
+    });
+
     return () => s.close();
   }, []);
 
@@ -1857,7 +2117,35 @@ function App() {
   }, []);
 
   if (!socket) return <div className="home">{t('loading')}</div>;
-  if (!st) return <Home socket={socket} connected={connected} onLang={changeLang} />;
+
+  if (!st) {
+    // 캐릭터 만들기 → 로비 → 방
+    if (screen === 'home') {
+      return (
+        <Home
+          socket={socket}
+          connected={connected}
+          onLang={changeLang}
+          onReady={(n, av) => {
+            setMe({ nick: n, avatar: av });
+            setScreen('lobby');
+          }}
+        />
+      );
+    }
+    return (
+      <LobbyScreen
+        socket={socket}
+        connected={connected}
+        nick={me.nick}
+        avatar={me.avatar}
+        onLang={changeLang}
+        onBack={() => setScreen('home')}
+        kicked={kickedNotice}
+        onDismissKicked={() => setKickedNotice(false)}
+      />
+    );
+  }
 
   return (
     <Game

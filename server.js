@@ -318,12 +318,15 @@ function clamp01(v) {
 /** @type {Map<string, Room>} */
 const rooms = new Map();
 
-function createRoom(hostId, hostNick, hostAvatar) {
+function createRoom(hostId, hostNick, hostAvatar, isPublic) {
   const code = makeRoomCode();
   const room = {
     code,
     hostId,
     hostNick, // 잠깐 끊긴 방장이 돌아오면 권한을 되돌려주기 위해 기억
+    isPublic: isPublic !== false, // 기본은 공개 (빠른 시작·방 목록에 노출)
+    banned: [], // 강퇴당한 닉네임 (같은 방 재입장 차단)
+    reports: {}, // 신고당한 사람 id -> 신고한 사람 id 목록 (방장에게만 보임)
     players: [], // { id, nick, connected }
     phase: 'lobby', // lobby | reveal | draw | discuss | vote | guess | result
     roundNo: 0,
@@ -588,6 +591,7 @@ function publicState(room) {
     })),
     settings: room.settings,
     categoryList: Object.keys(CATEGORIES),
+    isPublic: room.isPublic,
     category: showCategory ? r.category : null,
     order: r ? r.order.slice() : [],
     turnIndex: r ? r.turnIndex : 0,
@@ -631,7 +635,42 @@ function privateFor(room, player) {
     myVote: room.votes[player.id] || null,
     earlyVoted: !!room.earlyVotes[player.id],
     isGuesser: !!(room.guess && room.guess.mafiaId === player.id),
+    // 신고 누적은 방장에게만 보여준다 (방장이 강퇴 판단에 쓰도록)
+    reportCounts:
+      player.id === room.hostId
+        ? Object.entries(room.reports)
+            .map(([id, list]) => {
+              const p = getPlayer(room, id);
+              return p ? { id, nick: p.nick, count: list.length } : null;
+            })
+            .filter(Boolean)
+        : [],
   };
+}
+
+/** 로비 목록에 보여줄 방 요약 */
+function roomSummary(room) {
+  const conn = connectedPlayers(room).length;
+  return {
+    code: room.code,
+    hostNick: room.hostNick,
+    players: conn,
+    max: CONFIG.MAX_PLAYERS,
+    phase: room.phase,
+    waiting: room.phase === 'lobby',
+    joinable: room.phase === 'lobby' && conn < CONFIG.MAX_PLAYERS,
+    turnMs: room.settings.turnMs,
+    categories: room.settings.categories.slice(),
+    customOnly: room.settings.customOnly,
+    roundNo: room.roundNo,
+  };
+}
+
+/** 공개 + 대기중 + 자리 있는 방들 (오래된 순 → 먼저 만들어진 방이 먼저 채워지게) */
+function openPublicRooms() {
+  return [...rooms.values()]
+    .filter((r) => r.isPublic && r.phase === 'lobby' && connectedPlayers(r).length < CONFIG.MAX_PLAYERS)
+    .sort((a, b) => connectedPlayers(b).length - connectedPlayers(a).length);
 }
 
 function broadcast(room) {
@@ -1058,9 +1097,51 @@ io.on('connection', (socket) => {
     return code ? rooms.get(code) || null : null;
   };
 
+  /** 대기중인 공개 방 목록 */
+  socket.on('lobby:list', (payload, cb) => {
+    if (typeof cb !== 'function') return;
+    const list = [...rooms.values()]
+      .filter((r) => r.isPublic)
+      .map(roomSummary)
+      .sort((a, b) => Number(b.joinable) - Number(a.joinable) || b.players - a.players)
+      .slice(0, 30);
+    cb({ ok: true, rooms: list });
+  });
+
+  /**
+   * 빠른 시작: 자리 남은 공개 대기방에 넣어주고, 없으면 새 공개방을 만들어 넣어준다.
+   * 유저가 방 목록을 볼 필요 없이 한 번에 게임 흐름에 들어가게 하는 것이 목적.
+   */
+  socket.on('room:quick', (payload, cb) => {
+    const nick = sanitizeNick(payload && payload.nick);
+    const avatar = payload && payload.avatar;
+
+    for (const room of openPublicRooms()) {
+      if (room.banned.includes(nick)) continue;
+      if (room.players.some((p) => p.nick === nick)) continue; // 닉 충돌 방 건너뜀
+      addPlayer(room, socket.id, nick, avatar);
+      socket.data.roomCode = room.code;
+      socket.join(room.code);
+      pushSystem(room, 'joined', { nick });
+      if (typeof cb === 'function') cb({ ok: true, code: room.code, created: false });
+      sendCanvas(socket, room);
+      broadcast(room);
+      return;
+    }
+
+    // 들어갈 방이 없으면 새로 만든다
+    const room = createRoom(socket.id, nick, avatar, true);
+    socket.data.roomCode = room.code;
+    socket.join(room.code);
+    pushSystem(room, 'created', { nick });
+    if (typeof cb === 'function') cb({ ok: true, code: room.code, created: true });
+    sendCanvas(socket, room);
+    broadcast(room);
+  });
+
   socket.on('room:create', (payload, cb) => {
     const nick = sanitizeNick(payload && payload.nick);
-    const room = createRoom(socket.id, nick, payload && payload.avatar);
+    const room = createRoom(socket.id, nick, payload && payload.avatar, payload && payload.isPublic);
     socket.data.roomCode = room.code;
     socket.join(room.code);
     pushSystem(room, 'created', { nick });
@@ -1076,6 +1157,10 @@ io.on('connection', (socket) => {
 
     if (!room) {
       if (typeof cb === 'function') cb({ ok: false, error: '그런 코드의 방이 없습니다.' });
+      return;
+    }
+    if (room.banned.includes(nick)) {
+      if (typeof cb === 'function') cb({ ok: false, error: '이 방에서 강퇴되어 다시 들어갈 수 없습니다.' });
       return;
     }
 
@@ -1169,6 +1254,57 @@ io.on('connection', (socket) => {
     if (idx < 0) return;
     const [gone] = room.players.splice(idx, 1);
     pushSystem(room, 'botOut', { nick: gone.nick });
+    broadcast(room);
+  });
+
+  /** 방장 강퇴 — 같은 닉으로 다시 못 들어오게 막는다 */
+  socket.on('room:kick', (payload) => {
+    const room = roomOf();
+    if (!room || room.hostId !== socket.id) return;
+    const targetId = String((payload && payload.targetId) || '');
+    if (targetId === socket.id) return;
+    const target = getPlayer(room, targetId);
+    if (!target) return;
+
+    if (!room.banned.includes(target.nick)) room.banned.push(target.nick);
+    delete room.reports[targetId];
+
+    const sock = io.sockets.sockets.get(targetId);
+    if (sock) {
+      sock.emit('kicked', { code: room.code });
+      sock.leave(room.code);
+      sock.data.roomCode = null;
+    }
+    removePlayer(room, targetId, 'kicked');
+    if (rooms.has(room.code)) broadcast(room);
+  });
+
+  /** 신고 — 방장에게 누적 횟수를 알려 강퇴 판단에 쓰게 한다 */
+  socket.on('player:report', (payload, cb) => {
+    const room = roomOf();
+    if (!room) return;
+    const me = getPlayer(room, socket.id);
+    const targetId = String((payload && payload.targetId) || '');
+    const target = getPlayer(room, targetId);
+    if (!me || !target || targetId === socket.id) return;
+
+    const list = room.reports[targetId] || (room.reports[targetId] = []);
+    if (!list.includes(socket.id)) list.push(socket.id);
+
+    console.log(
+      `[신고] 방 ${room.code}: ${me.nick} → ${target.nick} (누적 ${list.length}) ` +
+        `사유: ${String((payload && payload.reason) || '-').slice(0, 100)}`
+    );
+
+    if (typeof cb === 'function') cb({ ok: true, count: list.length });
+    broadcast(room); // 방장 화면의 신고 배지 갱신
+  });
+
+  socket.on('room:visibility', (payload) => {
+    const room = roomOf();
+    if (!room || room.hostId !== socket.id) return;
+    if (room.phase !== 'lobby') return;
+    room.isPublic = !!(payload && payload.isPublic);
     broadcast(room);
   });
 

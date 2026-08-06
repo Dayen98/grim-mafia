@@ -239,8 +239,9 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 .logo-tag {
   position: relative; z-index: 1;
   display: block; margin-top: 4px;
-  font-size: 17px; color: var(--ink-soft);
+  font-size: 16px; color: var(--ink-soft); line-height: 1.45;
 }
+.tagline-line { display: block; }
 
 .logo-sm .logo-ch { font-size: 30px; text-shadow: 2px 2px 0 var(--paper-2), 3px 3px 0 rgba(47,42,38,.9); }
 .logo-sm .logo-blob { width: 165px; height: 78px; }
@@ -267,6 +268,94 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 }
 .error { color: var(--red); margin-top: 10px; min-height: 20px; font-weight: 700; }
 .rules { margin-top: 18px; color: var(--ink-soft); font-size: 16px; line-height: 1.8; }
+
+/* ---------- 로비 ---------- */
+
+.lobbyscreen { max-width: 480px; }
+.lobbytop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.backbtn { padding: 4px 12px; font-size: 14px; min-height: 0; box-shadow: 1px 2px 0 rgba(47,42,38,.85); }
+
+.whoami {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  padding: 10px 14px; background: var(--paper); border: 2.5px solid var(--ink);
+  border-radius: var(--wob-2);
+}
+.whoami-nick { font-family: 'Jua', var(--hand); font-size: 22px; }
+
+.quickbtn {
+  width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 18px 16px; background: var(--yellow);
+  border: 3px solid var(--ink); border-radius: var(--wob);
+  box-shadow: 4px 5px 0 rgba(47,42,38,.85); margin-bottom: 12px;
+}
+.qb-main { font-family: 'Jua', var(--hand); font-size: 26px; }
+.qb-sub { font-size: 13px; color: #6b5a35; font-weight: 400; }
+
+.lobbyrow { display: flex; gap: 8px; margin-bottom: 10px; }
+.lobbyrow > button { flex: 1; }
+.lobbyrow > input { flex: 1; }
+
+.subpanel {
+  background: var(--paper); border: 2.5px dashed var(--ink);
+  border-radius: var(--wob-2); padding: 12px; margin-bottom: 12px;
+}
+.vistoggle { display: flex; gap: 6px; justify-content: center; }
+.vis-desc { font-size: 13px; text-align: center; margin: 8px 0 10px; }
+
+.folder {
+  width: 100%; text-align: left; background: transparent; border-style: dashed;
+  box-shadow: none; font-size: 15px; padding: 8px 12px; margin-bottom: 8px;
+}
+.folder:hover:not(:disabled) { background: var(--paper); transform: none; box-shadow: none; }
+
+.emptyrooms { text-align: center; color: var(--ink-soft); font-size: 15px; line-height: 1.6; margin: 6px 0; }
+
+.roomcards { display: flex; flex-direction: column; gap: 8px; }
+.roomcard {
+  background: var(--paper-2); border: 2.5px solid var(--ink);
+  border-radius: var(--wob-2); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.roomcard.busy { opacity: .6; }
+.rc-top { display: flex; align-items: center; gap: 8px; }
+.rc-code {
+  font-family: 'Jua', var(--hand); font-size: 18px; letter-spacing: 2px;
+  background: var(--yellow); border: 2px solid var(--ink); border-radius: 999px; padding: 0 10px;
+}
+.rc-state {
+  margin-left: auto; font-size: 12px; font-weight: 700; padding: 1px 9px;
+  border: 2px solid var(--ink); border-radius: 999px; background: var(--paper-3);
+}
+.rc-state.waiting { background: var(--green); color: #fff; }
+.rc-meta { display: flex; flex-wrap: wrap; gap: 5px; }
+.rc-badge {
+  font-size: 12px; padding: 1px 8px; border-radius: 999px;
+  background: var(--paper); border: 2px solid rgba(47,42,38,.25);
+}
+.roomcard button { padding: 6px 12px; min-height: 38px; font-size: 15px; }
+
+.kicknotice {
+  display: flex; align-items: center; gap: 8px;
+  background: #fbdcd2; border: 2.5px solid var(--red); border-radius: var(--wob-2);
+  padding: 9px 12px; margin-bottom: 12px; font-size: 15px;
+}
+.kicknotice button { margin-left: auto; padding: 0 9px; min-height: 0; font-size: 14px; box-shadow: none; }
+
+/* ---------- 신고 / 강퇴 ---------- */
+
+.modbtns { display: flex; gap: 3px; }
+.modbtn {
+  padding: 0 6px; min-height: 26px; font-size: 12px; line-height: 1;
+  box-shadow: 1px 1px 0 rgba(47,42,38,.7); opacity: .55;
+}
+.modbtn:hover:not(:disabled) { opacity: 1; }
+.modbtn.kick:hover:not(:disabled) { background: var(--red); color: #fff; }
+.repbadge {
+  font-size: 11px; font-weight: 700; color: #fff; background: var(--red);
+  border: 2px solid var(--ink); border-radius: 999px; padding: 0 6px;
+}
+
+.advbox { margin-top: 4px; }
 
 /* ---------- 게임 레이아웃 ---------- */
 
@@ -655,6 +744,12 @@ canvas.drawable { border-color: var(--blue); box-shadow: 4px 5px 0 var(--blue); 
 
   /* 캔버스는 화면 폭을 최대한 쓰도록 여백 제거 */
   .canvaspanel { padding: 8px 6px; }
+
+  /* 로비 */
+  .qb-main { font-size: 23px; }
+  .quickbtn { padding: 16px 12px; }
+  .whoami-nick { font-size: 19px; }
+  .modbtn { min-height: 30px; padding: 0 8px; }
 
   .home { margin: 3vh auto; padding: 18px 16px; }
   .logo-ch { font-size: 48px; }
