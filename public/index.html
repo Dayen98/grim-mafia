@@ -3,7 +3,34 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- 다크모드 기기에서 로딩 중 검은 화면이 뜨지 않게 밝은 배경을 강제 -->
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#fbf3e2" />
     <title>그림 마피아</title>
+    <style>
+      /* 스크립트가 다 받아지기 전에도 크림색 배경 + 안내가 보이게 */
+      html, body { background: #fbf3e2; margin: 0; }
+      #boot {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        font-family: 'Malgun Gothic', system-ui, sans-serif; color: #7b6f63;
+      }
+      #boot .b-in { text-align: center; }
+      #boot .b-logo { font-size: 40px; }
+      #boot .b-t { margin-top: 10px; font-size: 20px; font-weight: 700; color: #2f2a26; }
+      #boot .b-s { margin-top: 4px; font-size: 14px; }
+      #boot .b-bar {
+        width: 180px; height: 10px; margin: 14px auto 0;
+        border: 2.5px solid #2f2a26; border-radius: 999px; overflow: hidden; background: #fffaf0;
+      }
+      #boot .b-bar i {
+        display: block; height: 100%; width: 40%; background: #f2b705;
+        animation: bootSlide 1.1s ease-in-out infinite;
+      }
+      @keyframes bootSlide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(250%); }
+      }
+    </style>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>" />
 
     <!-- 손글씨 느낌의 한글 폰트 (인터넷이 없으면 시스템 폰트로 대체) -->
@@ -53,11 +80,22 @@
 
     <div id="root"></div>
 
+    <!-- React/Babel이 준비될 때까지 보이는 임시 화면. 앱이 뜨면 스스로 사라진다. -->
+    <div id="boot">
+      <div class="b-in">
+        <div class="b-logo">🎨</div>
+        <div class="b-t">그림 마피아</div>
+        <div class="b-s">불러오는 중...</div>
+        <div class="b-bar"><i></i></div>
+      </div>
+    </div>
+
     <!-- 빌드 단계 없이 바로 실행되도록 node_modules의 UMD 빌드를 그대로 사용 -->
     <script src="/vendor/react/react.development.js"></script>
     <script src="/vendor/react-dom/react-dom.development.js"></script>
     <script src="/vendor/babel/babel.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/audio.js"></script>
     <script type="text/babel" data-presets="react" src="/app.jsx"></script>
   </body>
 </html>

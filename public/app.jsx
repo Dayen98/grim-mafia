@@ -75,6 +75,7 @@ const I18N = {
     rdReady: '준비', rdWaiting: '대기', rdHost: '방장',
     sMafia: '마피아 수', sMafiaH: '자동이면 지금 인원 기준 {n}명', personCnt: '명',
     ltLabel: '입력 중', ltEmpty: '아직 아무것도 안 썼어요',
+    soundOn: '소리 끄기', soundOff: '소리 켜기',
     noticeAndHelp: '공지 · 문의하기',
     fbTitle: '문의 / 피드백 보내기',
     fbPh: '불편한 점, 버그, 아이디어를 자유롭게 적어주세요.',
@@ -217,6 +218,7 @@ const I18N = {
     rdReady: 'Ready', rdWaiting: 'Waiting', rdHost: 'Host',
     sMafia: 'Impostors', sMafiaH: 'Auto = {n} for the current player count', personCnt: '',
     ltLabel: 'TYPING', ltEmpty: 'nothing typed yet',
+    soundOn: 'Mute', soundOff: 'Unmute',
     noticeAndHelp: 'News · Contact us',
     fbTitle: 'Send feedback',
     fbPh: 'Tell us about bugs, annoyances or ideas.',
@@ -350,6 +352,27 @@ const ruleSteps = () =>
   (LANG === 'en' ? RULE_STEPS_EN : RULE_STEPS_KO).map(([icon, title, body]) => ({ icon, title, body }));
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+/** 소리 (audio.js). 없어도 게임은 그대로 동작하게 감싼다 */
+const snd = (name) => {
+  if (window.GMAudio) window.GMAudio.sfx(name);
+};
+
+/** 🔊 / 🔇 토글 */
+function SoundToggle({ compact }) {
+  const [on, setOn] = useState(() => (window.GMAudio ? window.GMAudio.isEnabled() : false));
+  if (!window.GMAudio) return null;
+  return (
+    <button
+      type="button"
+      className={'chip sndbtn' + (compact ? ' compact' : '')}
+      title={on ? t('soundOn') : t('soundOff')}
+      onClick={() => setOn(window.GMAudio.setEnabled(!on))}
+    >
+      {on ? '🔊' : '🔇'}
+    </button>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* 타이머                                                              */
@@ -498,6 +521,26 @@ function DrawCanvas({ strokesRef, dirtyRef, canDraw, color, size, socket }) {
       window.removeEventListener('pointercancel', end);
     };
   });
+
+  /* 스케치북 안에서는 어떤 경우에도 화면이 움직이지 않게 한다.
+     CSS의 touch-action: none 만으로는 안 먹는 브라우저가 있어서
+     네이티브 non-passive 리스너로 스크롤 제스처 자체를 취소한다. */
+  useEffect(() => {
+    const cv = canvasRef.current;
+    if (!cv) return undefined;
+    const block = (e) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    // touchmove가 스크롤을 만들고, gesture*는 iOS 핀치 확대를 만든다
+    cv.addEventListener('touchmove', block, { passive: false });
+    cv.addEventListener('gesturestart', block, { passive: false });
+    cv.addEventListener('gesturechange', block, { passive: false });
+    return () => {
+      cv.removeEventListener('touchmove', block);
+      cv.removeEventListener('gesturestart', block);
+      cv.removeEventListener('gesturechange', block);
+    };
+  }, []);
 
   /* 터치 폴백.
      최신 모바일 브라우저(iOS 13+, Android Chrome)는 pointer 이벤트가 터치까지 처리하므로
@@ -923,7 +966,10 @@ function LobbyScreen({ socket, connected, nick, avatar, onLang, onBack, onEnter,
         <button className="backbtn" onClick={onBack}>
           ‹ {t('changeChar')}
         </button>
-        <LangToggle onChange={onLang} compact />
+        <span className="lobbytop-right">
+          <SoundToggle compact />
+          <LangToggle onChange={onLang} compact />
+        </span>
       </div>
 
       <div className="whoami">
@@ -1036,7 +1082,10 @@ function Home({ socket, connected, onLang, onReady }) {
 
   return (
     <div className="home">
-      <LangToggle onChange={onLang} />
+      <div className="lobbytop">
+        <SoundToggle compact />
+        <LangToggle onChange={onLang} compact />
+      </div>
       <Logo />
 
       <div className="field">
@@ -1174,7 +1223,10 @@ function PlayerList({ st, socket, bubbles }) {
               {st.phase === 'vote' && p.id !== me.id && p.connected && (
                 <button
                   className={me.myVote === p.id ? 'primary' : ''}
-                  onClick={() => socket.emit('vote:cast', { targetId: p.id })}
+                  onClick={() => {
+              snd('vote');
+              socket.emit('vote:cast', { targetId: p.id });
+            }}
                 >
                   {me.myVote === p.id ? t('votedBtn') : t('voteBtn')}
                 </button>
@@ -1665,7 +1717,10 @@ function VotePanel({ st, socket }) {
           <button
             key={p.id}
             className={'vp-card' + (me.myVote === p.id ? ' on' : '')}
-            onClick={() => socket.emit('vote:cast', { targetId: p.id })}
+            onClick={() => {
+              snd('vote');
+              socket.emit('vote:cast', { targetId: p.id });
+            }}
           >
             <span className="vp-nick">{p.nick}</span>
             <span className="vp-state">{me.myVote === p.id ? t('voteMine') : t('voteThis')}</span>
@@ -1809,6 +1864,15 @@ function GuessPanel({ st, socket, liveTyping }) {
 
 function Result({ st, socket }) {
   const r = st.result;
+  // 승패에 따라 결과 소리
+  const playedRef = useRef(null);
+  useEffect(() => {
+    if (!r) return;
+    const key = st.roundNo + ':' + (r.citizensWin ? 'c' : 'm');
+    if (playedRef.current === key) return;
+    playedRef.current = key;
+    setTimeout(() => snd(r.citizensWin ? 'correct' : 'wrong'), 1600); // 발표 연출 뒤에
+  }, [r, st.roundNo]);
   if (!r) return null;
   const max = Math.max(1, ...r.tally.map((row) => row.count));
 
@@ -1949,10 +2013,12 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveT
     lastTurnRef.current = key;
 
     const who = st.players.find((p) => p.id === st.currentDrawerId);
+    const isMine = st.currentDrawerId === st.you.id;
+    snd(isMine ? 'myTurn' : 'turn');
     setTurnFlash({
       key,
       nick: who ? who.nick : '?',
-      mine: st.currentDrawerId === st.you.id,
+      mine: isMine,
       n: st.turnIndex + 1,
       total: st.totalTurns,
     });
@@ -1964,23 +2030,42 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveT
   // 남은 시간이 5초 이하면 화면 가장자리를 붉게 점멸
   const urgent = st.phase === 'draw' && remain !== null && remain <= 5;
 
+  // 초읽기 소리 (같은 초에 두 번 울리지 않게)
+  const lastTickRef = useRef(null);
+  useEffect(() => {
+    if (!urgent || remain === null || remain <= 0) return;
+    const key = st.turnIndex + ':' + remain;
+    if (lastTickRef.current === key) return;
+    lastTickRef.current = key;
+    snd('tick');
+  }, [urgent, remain, st.turnIndex]);
+
+  // 방에 들어오면 BGM 시작, 나가면 정지
+  useEffect(() => {
+    if (window.GMAudio) window.GMAudio.startBgm();
+    return () => {
+      if (window.GMAudio) window.GMAudio.stopBgm();
+    };
+  }, []);
+
   // 폰에서는 캔버스가 화면 아래에 있어 내 차례인 걸 놓치기 쉽다.
   // 내 차례가 되면 캔버스를 자동으로 화면에 올려준다.
   const canvasBoxRef = useRef(null);
   useEffect(() => {
     if (!myTurn || !canvasBoxRef.current) return undefined;
 
-    // 먼저 캔버스를 화면에 올린 뒤, 스크롤을 잠가 그리는 동안 화면이 흔들리지 않게 한다
-    try {
-      canvasBoxRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } catch (_) {
-      canvasBoxRef.current.scrollIntoView();
+    // 이미 화면에 잘 보이면 굳이 움직이지 않는다.
+    // (smooth 스크롤은 애니메이션이라 그리는 중에 화면이 미끄러지는 원인이 됐다)
+    const box = canvasBoxRef.current;
+    const r = box.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (r.top < 8 || r.bottom > vh - 8) {
+      box.scrollIntoView({ block: 'center' }); // 즉시 이동
     }
-    const lock = setTimeout(() => document.body.classList.add('gm-scrolllock'), 500);
-    return () => {
-      clearTimeout(lock);
-      document.body.classList.remove('gm-scrolllock');
-    };
+
+    // 스크롤은 곧바로 잠근다 (지연을 두면 그 틈에 화면이 밀렸다)
+    document.body.classList.add('gm-scrolllock');
+    return () => document.body.classList.remove('gm-scrolllock');
   }, [myTurn]);
 
   // 그리기 중에는 아래 채팅/목록을 줄여 화면이 밀리지 않게 한다 (모바일)
@@ -2013,6 +2098,7 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveT
       fresh.forEach((m) => (next[m.playerId] = { id: m.id, text: m.text }));
       return next;
     });
+    snd('chat');
 
     // 각 말풍선은 자기 시간이 되면 알아서 사라진다.
     // (여기서 cleanup으로 취소하면 다음 메시지가 올 때 이전 말풍선이 안 지워진다)
@@ -2046,6 +2132,7 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveT
     }[st.phase];
     if (!A) return undefined;
 
+    snd(st.phase === 'guess' ? 'danger' : st.phase === 'result' ? 'drum' : 'phase');
     setAnnounce({ key, ...A });
     // 변수명을 t로 두면 번역 함수 t()를 가려버리므로 쓰지 말 것
     const timer = setTimeout(() => setAnnounce(null), 2400);
@@ -2096,6 +2183,7 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveT
         {remain !== null && (
           <span className={'timer' + (remain <= 5 ? ' urgent' : '')}>{remain}s</span>
         )}
+        <SoundToggle compact />
         <LangToggle onChange={onLang} compact />
         <button style={{ marginLeft: remain === null ? 'auto' : 0 }} onClick={onLeave}>
           {t('leave')}
@@ -2411,6 +2499,10 @@ class ErrorBoundary extends React.Component {
 }
 
 const rootEl = document.getElementById('root');
+// 임시 로딩 화면 제거
+const bootEl = document.getElementById('boot');
+if (bootEl) bootEl.remove();
+
 const tree = (
   <ErrorBoundary>
     <App />
