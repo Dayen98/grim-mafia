@@ -73,6 +73,14 @@ const I18N = {
     readyStatus: '준비 {a}/{b}', readyHint: '모두 준비하면 방장이 시작할 수 있어요',
     waitReady: '준비 대기 중 {a}/{b}',
     rdReady: '준비', rdWaiting: '대기', rdHost: '방장',
+    sMafia: '마피아 수', sMafiaH: '자동이면 지금 인원 기준 {n}명', personCnt: '명',
+    ltLabel: '입력 중', ltEmpty: '아직 아무것도 안 썼어요',
+    noticeAndHelp: '공지 · 문의하기',
+    fbTitle: '문의 / 피드백 보내기',
+    fbPh: '불편한 점, 버그, 아이디어를 자유롭게 적어주세요.',
+    fbContactPh: '답장 받을 연락처 (선택 · 이메일 등)',
+    fbSend: '보내기', fbEmpty: '내용을 입력해주세요.',
+    fbThanks: '보내주셔서 감사합니다! 확인 후 반영하겠습니다.', fbAgain: '하나 더 쓰기',
     advanced: '고급 설정',
     sVisibility: '방 공개 여부', sVisibilityH: '비공개는 코드로만 입장',
     winCitizens: '🎉 시민 승리!', winMafia: '🔪 마피아 승리!',
@@ -207,6 +215,14 @@ const I18N = {
     readyStatus: 'Ready {a}/{b}', readyHint: 'The host can start once everyone is ready',
     waitReady: 'Waiting for ready {a}/{b}',
     rdReady: 'Ready', rdWaiting: 'Waiting', rdHost: 'Host',
+    sMafia: 'Impostors', sMafiaH: 'Auto = {n} for the current player count', personCnt: '',
+    ltLabel: 'TYPING', ltEmpty: 'nothing typed yet',
+    noticeAndHelp: 'News · Contact us',
+    fbTitle: 'Send feedback',
+    fbPh: 'Tell us about bugs, annoyances or ideas.',
+    fbContactPh: 'Contact for a reply (optional)',
+    fbSend: 'Send', fbEmpty: 'Please write something.',
+    fbThanks: 'Thanks! We will take a look.', fbAgain: 'Write another',
     advanced: 'Advanced settings',
     sVisibility: 'Room visibility', sVisibilityH: 'Private = code only',
     winCitizens: '🎉 Citizens win!', winMafia: '🔪 Impostor wins!',
@@ -781,6 +797,102 @@ function RoomBrowser({ socket, onJoin, busy }) {
   );
 }
 
+/** 공지 + 문의하기 (로비 하단) */
+function NoticeAndFeedback({ socket, nick }) {
+  const [open, setOpen] = useState(false);
+  const [notices, setNotices] = useState([]);
+  const [text, setText] = useState('');
+  const [contact, setContact] = useState('');
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!open || notices.length) return;
+    socket.emit('notice:list', {}, (res) => {
+      if (res && res.ok) setNotices(res.notices || []);
+    });
+  }, [open, notices.length, socket]);
+
+  const send = (e) => {
+    e.preventDefault();
+    const body = text.trim();
+    if (!body) {
+      setErr(t('fbEmpty'));
+      return;
+    }
+    setErr('');
+    socket.emit('feedback:send', { text: body, contact, nick }, (res) => {
+      if (res && res.ok) {
+        setSent(true);
+        setText('');
+        setContact('');
+      } else {
+        setErr((res && res.error) || t('reqFail'));
+      }
+    });
+  };
+
+  return (
+    <React.Fragment>
+      <button className="folder" onClick={() => setOpen((v) => !v)}>
+        {open ? '▾' : '▸'} 📢 {t('noticeAndHelp')}
+      </button>
+      {open && (
+        <div className="subpanel">
+          <div className="noticelist">
+            {notices.length === 0 ? (
+              <p className="muted center">{t('loading')}</p>
+            ) : (
+              notices.map((n, i) => (
+                <div key={i} className="noticeitem">
+                  <div className="ni-top">
+                    <span className={'ni-tag tag-' + n.tag}>{n.tag}</span>
+                    <span className="ni-title">{n.title}</span>
+                    <span className="ni-date">{n.date}</span>
+                  </div>
+                  <div className="ni-body">{n.body}</div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="fbtitle">✉️ {t('fbTitle')}</div>
+          {sent ? (
+            <div className="fbdone">
+              {t('fbThanks')}
+              <button onClick={() => setSent(false)}>{t('fbAgain')}</button>
+            </div>
+          ) : (
+            <form onSubmit={send}>
+              <textarea
+                className="fbtext"
+                value={text}
+                maxLength={1000}
+                rows={4}
+                placeholder={t('fbPh')}
+                onChange={(e) => setText(e.target.value)}
+              />
+              <input
+                value={contact}
+                maxLength={100}
+                placeholder={t('fbContactPh')}
+                onChange={(e) => setContact(e.target.value)}
+                style={{ marginTop: 6 }}
+              />
+              <div className="error" style={{ minHeight: 0 }}>
+                {err}
+              </div>
+              <button className="primary" style={{ width: '100%' }} disabled={!text.trim()}>
+                {t('fbSend')}
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+    </React.Fragment>
+  );
+}
+
 function LobbyScreen({ socket, connected, nick, avatar, onLang, onBack, onEnter, kicked, onDismissKicked }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -887,6 +999,8 @@ function LobbyScreen({ socket, connected, nick, avatar, onLang, onBack, onEnter,
           <RoomBrowser socket={socket} busy={busy} onJoin={(c) => go('room:join', { code: c })} />
         </div>
       )}
+
+      <NoticeAndFeedback socket={socket} nick={nick} />
     </div>
   );
 }
@@ -1209,6 +1323,9 @@ function SettingsPanel({ st, socket }) {
   const lapText =
     t('lapInfo', { p: people, l: effLaps, t: people * effLaps }) + (s.laps === 0 ? t('lapAuto') : '');
 
+  // 마피아 수: 자동일 때 실제로 몇 명이 되는지 알려준다
+  const autoMafia = people >= 9 ? 3 : people >= 6 ? 2 : 1;
+
   const Row = ({ label, hint, children }) => (
     <div className="set-row">
       <span className="set-label">
@@ -1254,6 +1371,14 @@ function SettingsPanel({ st, socket }) {
           field="laps"
           def={0}
           opts={[[0, t('sAuto')], [1, '1' + t('strokes')], [2, '2' + t('strokes')], [3, '3' + t('strokes')], [4, '4' + t('strokes')]]}
+        />
+      </Row>
+
+      <Row label={t('sMafia')} hint={t('sMafiaH', { n: autoMafia })}>
+        <Choice
+          field="mafiaCount"
+          def={0}
+          opts={[[0, t('sAuto')], [1, '1' + t('personCnt')], [2, '2' + t('personCnt')], [3, '3' + t('personCnt')], [4, '4' + t('personCnt')]]}
         />
       </Row>
 
@@ -1578,11 +1703,27 @@ function HintBox({ hint }) {
   );
 }
 
-function GuessPanel({ st, socket }) {
+function GuessPanel({ st, socket, liveTyping }) {
   const g = st.guess;
   const [typed, setTyped] = useState('');
   if (!g) return null;
   const mine = st.you.isGuesser;
+
+  // 마피아가 입력하는 걸 그대로 중계 (모두가 실시간으로 본다)
+  const onType = (v) => {
+    setTyped(v);
+    socket.emit('guess:typing', { text: v });
+  };
+
+  const LiveBox = () => (
+    <div className={'livetype' + (liveTyping ? ' on' : '')}>
+      <span className="lt-label">{t('ltLabel')}</span>
+      <span className="lt-text">
+        {liveTyping ? liveTyping : <em className="lt-empty">{t('ltEmpty')}</em>}
+        <span className="lt-caret" />
+      </span>
+    </div>
+  );
 
   // 주관식 모드
   if (g.mode === 'text') {
@@ -1612,7 +1753,7 @@ function GuessPanel({ st, socket }) {
                 value={typed}
                 maxLength={30}
                 placeholder={t('gpPh')}
-                onChange={(e) => setTyped(e.target.value)}
+                onChange={(e) => onType(e.target.value)}
               />
               <button className="primary" style={{ flex: '0 0 90px' }} disabled={!typed.trim()}>
                 {t('submit')}
@@ -1620,7 +1761,10 @@ function GuessPanel({ st, socket }) {
             </div>
           </form>
         ) : (
-          <p className="center muted">{t('gpTyping', { nick: g.mafiaNick })}</p>
+          <React.Fragment>
+            <p className="center muted">{t('gpTyping', { nick: g.mafiaNick })}</p>
+            <LiveBox />
+          </React.Fragment>
         )}
       </div>
     );
@@ -1783,7 +1927,7 @@ function Result({ st, socket }) {
 /* 게임 화면                                                           */
 /* ------------------------------------------------------------------ */
 
-function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang }) {
+function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveTyping }) {
   const [color, setColor] = useState('#111827');
   const [size, setSize] = useState(6);
   const remain = useCountdown(st.deadline, offset);
@@ -1824,13 +1968,27 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang }) {
   // 내 차례가 되면 캔버스를 자동으로 화면에 올려준다.
   const canvasBoxRef = useRef(null);
   useEffect(() => {
-    if (!myTurn || !canvasBoxRef.current) return;
+    if (!myTurn || !canvasBoxRef.current) return undefined;
+
+    // 먼저 캔버스를 화면에 올린 뒤, 스크롤을 잠가 그리는 동안 화면이 흔들리지 않게 한다
     try {
       canvasBoxRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (_) {
       canvasBoxRef.current.scrollIntoView();
     }
+    const lock = setTimeout(() => document.body.classList.add('gm-scrolllock'), 500);
+    return () => {
+      clearTimeout(lock);
+      document.body.classList.remove('gm-scrolllock');
+    };
   }, [myTurn]);
+
+  // 그리기 중에는 아래 채팅/목록을 줄여 화면이 밀리지 않게 한다 (모바일)
+  useEffect(() => {
+    const on = st.phase === 'draw';
+    document.body.classList.toggle('gm-drawphase', on);
+    return () => document.body.classList.remove('gm-drawphase');
+  }, [st.phase]);
 
   // 새 채팅이 오면 그 사람 캐릭터 옆에 말풍선을 잠깐 띄운다
   const [bubbles, setBubbles] = useState({});
@@ -1958,7 +2116,7 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang }) {
             </div>
           )}
 
-          {st.phase === 'guess' && <GuessPanel st={st} socket={socket} />}
+          {st.phase === 'guess' && <GuessPanel st={st} socket={socket} liveTyping={liveTyping} />}
 
           {st.phase === 'result' && <Result st={st} socket={socket} />}
 
@@ -2047,6 +2205,7 @@ function App() {
   const [, setLangTick] = useState(LANG);
   const [screen, setScreen] = useState('home'); // home → lobby → (방)
   const [kickedNotice, setKickedNotice] = useState(false);
+  const [liveTyping, setLiveTyping] = useState('');
   const [me, setMe] = useState(() => {
     let av = null;
     try {
@@ -2132,6 +2291,9 @@ function App() {
       s.__cur = null;
     });
 
+    // 마피아가 입력하는 내용을 실시간으로 받아둔다
+    s.on('guess:typing', ({ text }) => setLiveTyping(text || ''));
+
     // 강퇴당하면 로비로 돌려보낸다
     s.on('kicked', () => {
       sessionStorage.removeItem('gm_session');
@@ -2196,6 +2358,7 @@ function App() {
       dirtyRef={dirtyRef}
       onLeave={leave}
       onLang={changeLang}
+      liveTyping={liveTyping}
     />
   );
 }

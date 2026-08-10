@@ -6,6 +6,7 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const http = require('http');
 const express = require('express');
 const { Server } = require('socket.io');
@@ -68,6 +69,7 @@ function defaultSettings() {
     voteMs: CONFIG.VOTE_MS,
     guessMs: CONFIG.GUESS_MS,
     guessMode: CONFIG.GUESS_MODE,
+    mafiaCount: 0, // 0 = 인원수에 맞춰 자동
     categories: [], // 빈 배열 = 전체 카테고리에서 랜덤
     customWords: [],
     customOnly: false,
@@ -82,7 +84,17 @@ const SETTING_CHOICES = {
   voteMs: [15000, 20000, 30000, 45000, 60000],
   guessMs: [15000, 20000, 30000, 45000, 60000],
   guessMode: ['text', 'choice'],
+  mafiaCount: [0, 1, 2, 3, 4],
 };
+
+/**
+ * 이번 라운드에 실제로 쓸 마피아 수.
+ * 설정값이 있어도 시민이 2명 미만이 되지 않도록 깎는다.
+ */
+function effectiveMafiaCount(room, playerCount) {
+  const want = room.settings.mafiaCount > 0 ? room.settings.mafiaCount : mafiaCountFor(playerCount);
+  return Math.max(1, Math.min(want, playerCount - 2));
+}
 
 function sanitizeSettings(cur, incoming) {
   const next = { ...cur };
@@ -742,7 +754,7 @@ function startGame(room) {
 
   const { category, word } = pickWordFor(room);
   const shuffled = shuffle(players.map((p) => p.id));
-  const mafiaIds = shuffled.slice(0, mafiaCountFor(players.length));
+  const mafiaIds = shuffled.slice(0, effectiveMafiaCount(room, players.length));
 
   room.roundNo += 1;
   room.round = {
@@ -1090,6 +1102,32 @@ function closeOpenStroke(room) {
 }
 
 /* ------------------------------------------------------------------ */
+/* 공지 / 문의                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 로비에 뜨는 공지. 여기만 고치고 다시 배포하면 바뀐다.
+ * date는 표시용 문자열, tag는 '공지' | '이벤트' | '업데이트'
+ */
+const NOTICES = [
+  {
+    date: '2026-08-10',
+    tag: '업데이트',
+    title: '로비 · 준비 시스템 · 마피아 힌트 추가',
+    body: '빠른 시작으로 바로 매칭됩니다. 마피아가 잡히면 시간이 지날수록 글자수·첫 글자 힌트가 열립니다.',
+  },
+  {
+    date: '2026-08-10',
+    tag: '공지',
+    title: '테스트 중입니다',
+    body: '아직 다듬는 중이라 어색한 부분이 있을 수 있어요. 아래 문의하기로 알려주시면 바로 고칩니다.',
+  },
+];
+
+const FEEDBACK_FILE = path.join(__dirname, 'feedback.log');
+const feedbackRecent = []; // 재시작 전까지만 메모리에 보관
+
+/* ------------------------------------------------------------------ */
 /* 정적 파일 서빙                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -1125,6 +1163,32 @@ io.on('connection', (socket) => {
   };
 
   /** 대기중인 공개 방 목록 */
+  socket.on('notice:list', (payload, cb) => {
+    if (typeof cb === 'function') cb({ ok: true, notices: NOTICES });
+  });
+
+  /**
+   * 문의/피드백. DB가 없으니 서버 로그와 feedback.log 파일에 남긴다.
+   * (Render 무료 플랜은 재배포 시 파일이 초기화되므로 로그 확인이 확실하다)
+   */
+  socket.on('feedback:send', (payload, cb) => {
+    const text = String((payload && payload.text) || '').trim().slice(0, 1000);
+    const contact = String((payload && payload.contact) || '').trim().slice(0, 100);
+    const nick = sanitizeNick(payload && payload.nick);
+    if (!text) {
+      if (typeof cb === 'function') cb({ ok: false, error: '내용을 입력해주세요.' });
+      return;
+    }
+    const line = JSON.stringify({ at: new Date().toISOString(), nick, contact, text });
+    console.log('[문의]', line);
+    feedbackRecent.push(line);
+    if (feedbackRecent.length > 200) feedbackRecent.shift();
+    fs.appendFile(FEEDBACK_FILE, line + '\n', (err) => {
+      if (err) console.error('[문의] 파일 기록 실패', err.message);
+    });
+    if (typeof cb === 'function') cb({ ok: true });
+  });
+
   socket.on('lobby:list', (payload, cb) => {
     if (typeof cb !== 'function') return;
     const list = [...rooms.values()]
@@ -1432,6 +1496,18 @@ io.on('connection', (socket) => {
     const me = getPlayer(room, socket.id);
     if (!me) return;
     toggleEarlyVote(room, socket.id);
+  });
+
+  /**
+   * 마피아가 입력하는 걸 방 전체에 실시간 중계.
+   * 상태 전체를 다시 보내면 무거우니 가벼운 이벤트만 흘려보낸다.
+   */
+  socket.on('guess:typing', (payload) => {
+    const room = roomOf();
+    if (!room || room.phase !== 'guess' || !room.guess) return;
+    if (room.guess.mafiaId !== socket.id) return;
+    const text = String((payload && payload.text) || '').slice(0, 30);
+    socket.to(room.code).emit('guess:typing', { text });
   });
 
   socket.on('guess:submit', (payload) => {
