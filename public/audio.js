@@ -362,4 +362,32 @@
   ['pointerdown', 'keydown', 'touchstart'].forEach((ev) =>
     window.addEventListener(ev, unlock, { once: true, passive: true })
   );
+
+  /* 탭을 다른 곳으로 넘기거나 창을 최소화하면 소리를 멈춘다.
+     안 그러면 게임을 열어둔 걸 잊었을 때 계속 음악이 흘러나온다.
+     돌아오면 원래 듣고 있었던 경우에만 다시 켠다. */
+  let pausedByHide = false;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (state.bgm) {
+        pausedByHide = true;
+        stopBgm(true); // wantBgm은 유지 → 돌아오면 복귀
+      }
+    } else if (pausedByHide) {
+      pausedByHide = false;
+      if (state.enabled && state.wantBgm) startBgm();
+    }
+  });
+
+  // 창을 닫거나 새로고침할 때 소리를 확실히 끊는다
+  window.addEventListener('pagehide', () => {
+    stopBgm(true);
+    if (state.ctx && state.ctx.state === 'running') {
+      try {
+        state.ctx.suspend();
+      } catch (_) {
+        /* 무시 */
+      }
+    }
+  });
 })();
