@@ -31,16 +31,26 @@
     if (!AC) return null;
 
     const ctx = new AC();
+
+    // 볼륨을 키워도 찌그러지지 않도록 리미터를 마지막에 하나 둔다
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.2;
+    limiter.connect(ctx.destination);
+
     const master = ctx.createGain();
-    master.gain.value = 0.9;
-    master.connect(ctx.destination);
+    master.gain.value = 1.6;
+    master.connect(limiter);
 
     const bgmGain = ctx.createGain();
     bgmGain.gain.value = 0; // 페이드인으로 올린다
     bgmGain.connect(master);
 
     const sfxGain = ctx.createGain();
-    sfxGain.gain.value = 0.5;
+    sfxGain.gain.value = 1.0;
     sfxGain.connect(master);
 
     state.ctx = ctx;
@@ -193,8 +203,8 @@
 
     const lfo = ctx.createOscillator();
     const lfoAmt = ctx.createGain();
-    lfo.frequency.value = 0.07; // 14초에 한 번 왕복
-    lfoAmt.gain.value = 320;
+    lfo.frequency.value = 0.1; // 10초에 한 번 왕복
+    lfoAmt.gain.value = 360;
     lfo.connect(lfoAmt);
     lfoAmt.connect(lp.frequency);
     lfo.start(t0);
@@ -205,7 +215,7 @@
       o.type = 'sine';
       o.frequency.value = f;
       const g = ctx.createGain();
-      g.gain.value = 0.16;
+      g.gain.value = 0.24;
       o.connect(g);
       g.connect(lp);
       o.start(t0);
@@ -215,8 +225,8 @@
     // 음정을 아주 느리게 흔들어 초점이 안 맞는 느낌
     const wob = ctx.createOscillator();
     const wobAmt = ctx.createGain();
-    wob.frequency.value = 0.13;
-    wobAmt.gain.value = 1.6;
+    wob.frequency.value = 0.17;
+    wobAmt.gain.value = 1.8;
     wob.connect(wobAmt);
     drones.forEach((o) => wobAmt.connect(o.frequency));
     wob.start(t0);
@@ -224,22 +234,22 @@
     // 목적 없이 느긋하게 튕기는 음들
     const timer = setInterval(() => {
       if (!state.enabled || !state.bgm) return;
-      if (Math.random() < 0.28) return; // 가끔 쉬어서 더 멍하게
+      if (Math.random() < 0.18) return; // 가끔 쉬어서 더 멍하게
       const f = SCALE[Math.floor(Math.random() * SCALE.length)];
       const o = ctx.createOscillator();
       const g = ctx.createGain();
       const t = ctx.currentTime;
       o.type = 'triangle';
       o.frequency.setValueAtTime(f, t);
-      o.frequency.linearRampToValueAtTime(f * (0.985 + Math.random() * 0.03), t + 1.4); // 음이 살짝 흘러내림
+      o.frequency.linearRampToValueAtTime(f * (0.985 + Math.random() * 0.03), t + 1.0); // 음이 살짝 흘러내림
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.1, t + 0.25);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+      g.gain.exponentialRampToValueAtTime(0.2, t + 0.16);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.15);
       o.connect(g);
       g.connect(lp);
       o.start(t);
-      o.stop(t + 1.7);
-    }, 1250);
+      o.stop(t + 1.25);
+    }, 820);
 
     state.bgm = { out, lp, lfo, wob, drones, timer };
     state.wantBgm = true;
@@ -247,7 +257,7 @@
     // 부드럽게 페이드인
     state.bgmGain.gain.cancelScheduledValues(t0);
     state.bgmGain.gain.setValueAtTime(state.bgmGain.gain.value, t0);
-    state.bgmGain.gain.linearRampToValueAtTime(0.22, t0 + 2.5);
+    state.bgmGain.gain.linearRampToValueAtTime(0.6, t0 + 1.5);
   }
 
   function stopBgm(keepWant) {
