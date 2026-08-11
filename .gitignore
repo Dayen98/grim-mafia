@@ -6,3 +6,5 @@ Thumbs.db
 .env
 .claude/
 feedback.log
+videoplayback.m4a
+*.m4a

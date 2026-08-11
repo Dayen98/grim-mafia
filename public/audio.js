@@ -175,10 +175,60 @@
     },
   };
 
-  /* ---------------- BGM ---------------- */
+  /* ---------------- BGM ----------------
+   *
+   * 지속음(드론) 없음. 짧게 튕기는 음만 써서 "웅웅" 울리지 않는다.
+   * 레퍼런스 음악을 분석한 결과(75~100 BPM, 평균 78)에 맞춰 80 BPM으로 잡았고,
+   * Am - F - C - G 네 마디를 돌리는 코드 진행 위에 베이스·화음·멜로디·하이햇을 얹는다.
+   */
 
-  // 라(A) 기반 5음 음계 — 어느 음을 눌러도 안 틀리게 들려서 붕 뜬 느낌이 난다
-  const SCALE = [220, 247, 294, 330, 392, 440, 494, 587];
+  const BPM = 80;
+  const STEP = 60 / BPM / 4; // 16분음표 길이(초)
+  const BAR_STEPS = 16;
+
+  // 마디별 코드: bass = 베이스 음, chord = 화음 3음, mel = 멜로디로 쓸 음들 (MIDI 번호)
+  const PROG = [
+    { bass: 45, chord: [57, 60, 64], mel: [69, 72, 76, 64, 60] }, // Am
+    { bass: 41, chord: [53, 57, 60], mel: [65, 69, 72, 60, 57] }, // F
+    { bass: 48, chord: [60, 64, 67], mel: [72, 76, 79, 67, 64] }, // C
+    { bass: 43, chord: [55, 59, 62], mel: [67, 71, 74, 62, 59] }, // G
+  ];
+
+  const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+  /** 짧게 튕기는 음 하나 */
+  function pluck(ctx, dest, when, midi, dur, vol, type) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type || 'triangle';
+    o.frequency.value = midiHz(midi);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(vol, when + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    o.connect(g);
+    g.connect(dest);
+    o.start(when);
+    o.stop(when + dur + 0.02);
+  }
+
+  /** 하이햇/킥용 짧은 노이즈 */
+  function hit(ctx, dest, when, dur, vol, cutoff, hp) {
+    const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const f = ctx.createBiquadFilter();
+    f.type = hp ? 'highpass' : 'lowpass';
+    f.frequency.value = cutoff;
+    const g = ctx.createGain();
+    g.gain.value = vol;
+    src.connect(f);
+    f.connect(g);
+    g.connect(dest);
+    src.start(when);
+  }
 
   function startBgm() {
     if (!state.enabled) return;
@@ -194,70 +244,63 @@
     out.gain.value = 1;
     out.connect(state.bgmGain);
 
-    // 흐릿하게 만드는 저역 통과 필터 + 아주 느린 흔들림
+    // 날카로움만 살짝 깎는 정도. 공명(Q)을 올리지 않아 울림이 생기지 않는다.
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 700;
-    lp.Q.value = 6;
+    lp.frequency.value = 3200;
+    lp.Q.value = 0.7;
     lp.connect(out);
 
-    const lfo = ctx.createOscillator();
-    const lfoAmt = ctx.createGain();
-    lfo.frequency.value = 0.1; // 10초에 한 번 왕복
-    lfoAmt.gain.value = 360;
-    lfo.connect(lfoAmt);
-    lfoAmt.connect(lp.frequency);
-    lfo.start(t0);
+    const bgm = { out, lp, step: 0, next: t0 + 0.1, timer: null };
 
-    // 살짝 어긋난 두 드론 → 맥놀이로 어질어질함
-    const drones = [110, 110.6].map((f) => {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = f;
-      const g = ctx.createGain();
-      g.gain.value = 0.24;
-      o.connect(g);
-      g.connect(lp);
-      o.start(t0);
-      return o;
-    });
+    /* 한 스텝(16분음표)에 무엇을 울릴지 정하고 미리 예약한다.
+       미리 예약해두는 방식이라 브라우저가 바빠도 리듬이 흐트러지지 않는다. */
+    function scheduleStep(step, when) {
+      const bar = Math.floor(step / BAR_STEPS) % PROG.length;
+      const s = step % BAR_STEPS;
+      const c = PROG[bar];
 
-    // 음정을 아주 느리게 흔들어 초점이 안 맞는 느낌
-    const wob = ctx.createOscillator();
-    const wobAmt = ctx.createGain();
-    wob.frequency.value = 0.17;
-    wobAmt.gain.value = 1.8;
-    wob.connect(wobAmt);
-    drones.forEach((o) => wobAmt.connect(o.frequency));
-    wob.start(t0);
+      // 베이스: 1박 / 3박 + 3박 뒤꾸밈
+      if (s === 0) pluck(ctx, lp, when, c.bass, 0.3, 0.34, 'triangle');
+      if (s === 8) pluck(ctx, lp, when, c.bass, 0.26, 0.3, 'triangle');
+      if (s === 11) pluck(ctx, lp, when, c.bass + 12, 0.16, 0.16, 'triangle');
 
-    // 목적 없이 느긋하게 튕기는 음들
-    const timer = setInterval(() => {
-      if (!state.enabled || !state.bgm) return;
-      if (Math.random() < 0.18) return; // 가끔 쉬어서 더 멍하게
-      const f = SCALE[Math.floor(Math.random() * SCALE.length)];
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      const t = ctx.currentTime;
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(f, t);
-      o.frequency.linearRampToValueAtTime(f * (0.985 + Math.random() * 0.03), t + 1.0); // 음이 살짝 흘러내림
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.2, t + 0.16);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 1.15);
-      o.connect(g);
-      g.connect(lp);
-      o.start(t);
-      o.stop(t + 1.25);
-    }, 820);
+      // 화음 스탭: 2박 / 4박에 짧게 (엇박 느낌)
+      if (s === 4 || s === 12) {
+        c.chord.forEach((m, i) => pluck(ctx, lp, when + i * 0.006, m, 0.19, 0.12, 'square'));
+      }
 
-    state.bgm = { out, lp, lfo, wob, drones, timer };
+      // 멜로디: 느긋하게 몇 군데만
+      const MEL_STEPS = [2, 6, 9, 14];
+      if (MEL_STEPS.indexOf(s) >= 0) {
+        const m = c.mel[Math.floor(Math.random() * c.mel.length)];
+        pluck(ctx, lp, when, m, 0.34, 0.15, 'triangle');
+      }
+
+      // 킥: 1박 / 3박
+      if (s === 0 || s === 8) hit(ctx, lp, when, 0.1, 0.3, 180, false);
+      // 하이햇: 8분음표마다, 엇박은 조금 크게
+      if (s % 2 === 0) hit(ctx, lp, when, 0.03, s % 4 === 2 ? 0.1 : 0.055, 7000, true);
+    }
+
+    // 100ms 앞을 내다보며 예약
+    bgm.timer = setInterval(() => {
+      if (!state.enabled || state.bgm !== bgm) return;
+      const now = ctx.currentTime;
+      while (bgm.next < now + 0.2) {
+        scheduleStep(bgm.step, bgm.next);
+        bgm.step++;
+        bgm.next += STEP;
+      }
+    }, 40);
+
+    state.bgm = bgm;
     state.wantBgm = true;
 
     // 부드럽게 페이드인
     state.bgmGain.gain.cancelScheduledValues(t0);
     state.bgmGain.gain.setValueAtTime(state.bgmGain.gain.value, t0);
-    state.bgmGain.gain.linearRampToValueAtTime(0.6, t0 + 1.5);
+    state.bgmGain.gain.linearRampToValueAtTime(1.15, t0 + 1.2);
   }
 
   function stopBgm(keepWant) {
@@ -272,17 +315,15 @@
     state.bgmGain.gain.linearRampToValueAtTime(0.0001, t + 0.8);
 
     clearInterval(b.timer);
+    state.bgm = null; // 예약 루프가 더 이상 소리를 넣지 않게 먼저 끊는다
     setTimeout(() => {
       try {
-        b.drones.forEach((o) => o.stop());
-        b.lfo.stop();
-        b.wob.stop();
+        b.lp.disconnect();
         b.out.disconnect();
       } catch (_) {
-        /* 이미 멈춘 경우 무시 */
+        /* 이미 정리된 경우 무시 */
       }
     }, 900);
-    state.bgm = null;
   }
 
   /* ---------------- 외부 인터페이스 ---------------- */
