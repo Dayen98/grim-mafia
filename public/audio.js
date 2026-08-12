@@ -20,10 +20,16 @@
     bgmGain: null,
     sfxGain: null,
     bgm: null, // 현재 돌아가는 BGM 노드 묶음
+    limiter: null, // 최종 출력단 (iOS에서는 여기서 <audio>로 빠진다)
+    mediaEl: null, // iOS 무음 스위치 우회용 <audio>
     enabled: localStorage.getItem(LS_KEY) !== 'off',
     unlocked: false,
     wantBgm: false,
   };
+
+  const IS_IOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   function ensureCtx() {
     if (state.ctx) return state.ctx;
@@ -39,7 +45,34 @@
     limiter.ratio.value = 12;
     limiter.attack.value = 0.003;
     limiter.release.value = 0.2;
-    limiter.connect(ctx.destination);
+
+    /* iPhone은 측면의 무음(벨소리) 스위치가 켜져 있으면 Web Audio 소리를 그냥 삼킨다.
+       출력을 <audio> 요소로 한 번 거치면 "미디어 재생"으로 취급돼 무음 스위치와 무관하게 들린다. */
+    let routed = false;
+    if (IS_IOS && ctx.createMediaStreamDestination) {
+      try {
+        const msd = ctx.createMediaStreamDestination();
+        limiter.connect(msd);
+        const el = document.createElement('audio');
+        el.srcObject = msd.stream;
+        el.playsInline = true;
+        el.setAttribute('playsinline', '');
+        el.autoplay = true;
+        el.muted = false;
+        el.volume = 1;
+        el.style.display = 'none';
+        document.body.appendChild(el);
+        const p = el.play();
+        if (p && p.catch) p.catch(() => {});
+        state.mediaEl = el;
+        routed = true;
+      } catch (_) {
+        routed = false;
+      }
+    }
+    // iOS 경로가 실패했으면 평소처럼 스피커로 직접 보낸다
+    if (!routed) limiter.connect(ctx.destination);
+    state.limiter = limiter;
 
     const master = ctx.createGain();
     master.gain.value = 1.6;
@@ -60,11 +93,38 @@
     return ctx;
   }
 
-  /** 브라우저 자동재생 정책 때문에 첫 클릭/터치에서 한 번 열어줘야 한다 */
+  /**
+   * 브라우저 자동재생 정책 때문에 사용자 동작 안에서 열어줘야 한다.
+   * 모바일은 한 번 실패하는 경우가 많아, 열릴 때까지 매 터치마다 다시 시도한다.
+   */
   function unlock() {
     const ctx = ensureCtx();
     if (!ctx) return;
-    if (ctx.state === 'suspended') ctx.resume();
+
+    // 아주 짧은 무음을 제스처 안에서 재생 — 모바일에서 오디오가 실제로 열리게 하는 관문
+    try {
+      const b = ctx.createBuffer(1, 1, ctx.sampleRate);
+      const s = ctx.createBufferSource();
+      s.buffer = b;
+      s.connect(state.limiter || ctx.destination);
+      s.start(0);
+    } catch (_) {
+      /* 무시 */
+    }
+
+    if (ctx.state === 'suspended') {
+      const p = ctx.resume();
+      if (p && p.then) p.then(() => afterUnlock()).catch(() => {});
+    }
+    if (state.mediaEl && state.mediaEl.paused) {
+      const p2 = state.mediaEl.play();
+      if (p2 && p2.catch) p2.catch(() => {});
+    }
+    afterUnlock();
+  }
+
+  function afterUnlock() {
+    if (!state.ctx || state.ctx.state !== 'running') return;
     state.unlocked = true;
     if (state.wantBgm && state.enabled && !state.bgm) startBgm();
   }
@@ -337,9 +397,29 @@
       if (!on) stopBgm(true);
       else {
         unlock();
+        // 켰을 때 바로 들리는 확인음 (소리가 나는지 즉시 알 수 있게)
+        setTimeout(() => SFX.myTurn(), 60);
         if (state.wantBgm) startBgm();
       }
       return state.enabled;
+    },
+
+    /** 소리가 안 날 때 원인 파악용 */
+    debug() {
+      const ctx = state.ctx;
+      return {
+        enabled: state.enabled,
+        ctxExists: !!ctx,
+        ctxState: ctx ? ctx.state : null,
+        sampleRate: ctx ? ctx.sampleRate : null,
+        isIOS: IS_IOS,
+        iosMediaRoute: !!state.mediaEl,
+        mediaPaused: state.mediaEl ? state.mediaEl.paused : null,
+        mediaMuted: state.mediaEl ? state.mediaEl.muted : null,
+        bgmRunning: !!state.bgm,
+        wantBgm: state.wantBgm,
+        ua: navigator.userAgent.slice(0, 120),
+      };
     },
     sfx(name) {
       const fn = SFX[name];
@@ -358,9 +438,14 @@
     stopBgm: () => stopBgm(false),
   };
 
-  // 첫 사용자 동작에서 오디오를 열어둔다
-  ['pointerdown', 'keydown', 'touchstart'].forEach((ev) =>
-    window.addEventListener(ev, unlock, { once: true, passive: true })
+  /* 오디오가 열릴 때까지 사용자 동작마다 계속 재시도한다.
+     (한 번만 시도하면 모바일에서 실패했을 때 영구히 소리가 안 난다) */
+  function onGesture() {
+    if (!state.ctx || state.ctx.state !== 'running') unlock();
+    else afterUnlock();
+  }
+  ['pointerdown', 'touchend', 'keydown'].forEach((ev) =>
+    window.addEventListener(ev, onGesture, { passive: true })
   );
 
   /* 탭을 다른 곳으로 넘기거나 창을 최소화하면 소리를 멈춘다.
