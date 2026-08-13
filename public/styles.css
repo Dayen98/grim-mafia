@@ -426,8 +426,9 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 }
 .howtobtn:hover { background: var(--yellow); }
 
+.credits-folder { margin-top: 18px; font-size: 14px; }
 .credits {
-  margin-top: 18px; padding: 13px 15px;
+  margin-bottom: 8px; padding: 13px 15px;
   background: var(--paper); border: 2.5px solid var(--ink); border-radius: var(--wob-2);
 }
 .cr-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }

@@ -78,6 +78,7 @@ const I18N = {
     soundOn: '소리 끄기', soundOff: '소리 켜기',
     howToPlay: '게임 방법', aboutPage: '소개', privacyPage: '개인정보처리방침', contactPage: '문의',
     madeBy: '만든 사람', coffeeMsg: '재밌게 하셨다면 커피 한 잔 사주세요!',
+    creditsFold: '만든 사람 · 후원',
     copy: '복사', copied: '복사됨 ✓', acctOwner: '예금주', moreAbout: '더 알아보기',
     noticeAndHelp: '공지 · 문의하기',
     fbTitle: '문의 / 피드백 보내기',
@@ -224,6 +225,7 @@ const I18N = {
     soundOn: 'Mute', soundOff: 'Unmute',
     howToPlay: 'How to play', aboutPage: 'About', privacyPage: 'Privacy', contactPage: 'Contact',
     madeBy: 'Made by', coffeeMsg: 'Enjoyed it? Buy us a coffee!',
+    creditsFold: 'Credits · Support',
     copy: 'Copy', copied: 'Copied ✓', acctOwner: 'Account holder', moreAbout: 'Learn more',
     noticeAndHelp: 'News · Contact us',
     fbTitle: 'Send feedback',
@@ -1141,10 +1143,12 @@ function Home({ socket, connected, onLang, onReady }) {
   );
 }
 
-/** 랜딩 맨 아래 '만든 사람 + 후원' 축약 블록 (/about 의 요약판) */
+/** 랜딩 맨 아래 '만든 사람 + 후원' 축약 블록 (/about 의 요약판).
+    기본은 접혀 있고, 눌러야 펼쳐진다. */
 function CreditsBlock() {
   const ACCT = '352-1962-6796-13';
   const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const copy = () => {
     const done = () => {
@@ -1171,26 +1175,33 @@ function CreditsBlock() {
   };
 
   return (
-    <div className="credits">
-      <div className="cr-row">
-        <span className="cr-label">{t('madeBy')}</span>
-        <span className="cr-names">다영 · 민우</span>
-      </div>
-      <div className="cr-coffee">
-        <span className="cr-msg">☕ {t('coffeeMsg')}</span>
-        <div className="acct-line small">
-          <span className="acct-bank">농축협</span>
-          <span className="acct-no">{ACCT}</span>
-          <button type="button" className={'copybtn' + (copied ? ' copied' : '')} onClick={copy}>
-            {copied ? t('copied') : t('copy')}
-          </button>
+    <React.Fragment>
+      <button className="folder credits-folder" onClick={() => setOpen((v) => !v)}>
+        {open ? '▾' : '▸'} ☕ {t('creditsFold')}
+      </button>
+      {open && (
+        <div className="credits">
+          <div className="cr-row">
+            <span className="cr-label">{t('madeBy')}</span>
+            <span className="cr-names">다영 · 민우</span>
+          </div>
+          <div className="cr-coffee">
+            <span className="cr-msg">☕ {t('coffeeMsg')}</span>
+            <div className="acct-line small">
+              <span className="acct-bank">농축협</span>
+              <span className="acct-no">{ACCT}</span>
+              <button type="button" className={'copybtn' + (copied ? ' copied' : '')} onClick={copy}>
+                {copied ? t('copied') : t('copy')}
+              </button>
+            </div>
+            <div className="acct-owner">{t('acctOwner')}: 강다영</div>
+          </div>
+          <a className="cr-more" href="/about">
+            {t('moreAbout')} ›
+          </a>
         </div>
-        <div className="acct-owner">{t('acctOwner')}: 강다영</div>
-      </div>
-      <a className="cr-more" href="/about">
-        {t('moreAbout')} ›
-      </a>
-    </div>
+      )}
+    </React.Fragment>
   );
 }
 
