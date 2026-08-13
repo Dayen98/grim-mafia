@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#fbf3e2" />
+    <title>소개 — 그림 마피아</title>
+    <meta
+      name="description"
+      content="그림 마피아를 만든 사람들과 서비스 소개. 친구들과 한 획씩 그림을 이어 그리며 마피아를 찾는 무료 웹 게임입니다."
+    />
+    <link rel="canonical" href="https://grim-mafia.onrender.com/about" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-head">
+        <a class="page-home" href="/">‹ 게임으로</a>
+        <h1>🎨 그림 마피아 소개</h1>
+      </header>
+
+      <section class="page-sec">
+        <h2>어떤 게임인가요</h2>
+        <!-- 여기에 직접 쓰실 소개 문단을 넣으세요. 아래는 자리표시 문단입니다. -->
+        <p>
+          그림 마피아는 친구들과 하나의 캔버스에 한 획씩 그림을 이어 그리면서,
+          정답 단어를 모르는 채 섞여 있는 마피아를 찾아내는 실시간 추리 게임입니다.
+          설치할 것도, 회원가입할 것도 없이 링크만 있으면 PC와 휴대폰에서 바로 함께 플레이할 수 있습니다.
+        </p>
+        <p>
+          시민은 단어를 알지만 너무 잘 그리면 마피아에게 정답을 넘겨주게 되고,
+          마피아는 아무것도 모르는 채 시민인 척 그려야 합니다.
+          그 애매한 줄타기에서 나오는 어색함을 찾아내는 게 이 게임의 재미입니다.
+        </p>
+        <p class="page-note">
+          (이 문단은 자리표시 텍스트입니다. 원하는 소개 글로 자유롭게 바꿔주세요.)
+        </p>
+      </section>
+
+      <section class="page-sec" id="makers">
+        <h2>만든 사람</h2>
+        <div class="makers">
+          <div class="maker">
+            <span class="m-emoji">🙂</span>
+            <span class="m-name">다영</span>
+          </div>
+          <div class="maker">
+            <span class="m-emoji">🙂</span>
+            <span class="m-name">민우</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="page-sec" id="coffee">
+        <h2>☕ Buy me a coffee</h2>
+        <div class="coffee">
+          <p class="coffee-msg">재밌게 하셨다면 커피 한 잔 사주세요!</p>
+          <div class="acctbox">
+            <div class="acct-line">
+              <span class="acct-bank">농축협</span>
+              <span class="acct-no" id="acctNo">352-1962-6796-13</span>
+              <button type="button" class="copybtn" id="copyBtn" data-acct="352-1962-6796-13">복사</button>
+            </div>
+            <div class="acct-owner">예금주: 강다영</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="page-sec" id="contact">
+        <h2>✉️ 문의</h2>
+        <p>
+          버그 제보나 건의사항은 아래 메일 또는 게임 로비의 <strong>공지 · 문의하기</strong>에서 보내주세요.
+        </p>
+        <p class="mailline"><a href="mailto:opqnetworks@gmail.com">opqnetworks@gmail.com</a></p>
+      </section>
+
+      <p class="page-cta"><a class="ctabtn" href="/">🎨 지금 해보기</a></p>
+
+      <footer class="gmfooter">
+        <nav>
+          <a href="/how-to-play">게임 방법</a>
+          <a href="/about">소개</a>
+          <a href="/privacy">개인정보처리방침</a>
+          <a href="/about#contact">문의</a>
+        </nav>
+        <p class="foot-copy">그림 마피아 · 운영자 강다영</p>
+      </footer>
+    </div>
+
+    <script>
+      // 계좌번호 복사
+      (function () {
+        var btn = document.getElementById('copyBtn');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          var text = btn.getAttribute('data-acct');
+          var done = function () {
+            btn.textContent = '복사됨 ✓';
+            btn.classList.add('copied');
+            setTimeout(function () {
+              btn.textContent = '복사';
+              btn.classList.remove('copied');
+            }, 1800);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, fallback);
+          } else {
+            fallback();
+          }
+          // 클립보드 API를 못 쓰는 환경(구형 브라우저 등)용
+          function fallback() {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+              document.execCommand('copy');
+              done();
+            } catch (e) {
+              btn.textContent = '복사 실패';
+              setTimeout(function () {
+                btn.textContent = '복사';
+              }, 1800);
+            }
+            document.body.removeChild(ta);
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

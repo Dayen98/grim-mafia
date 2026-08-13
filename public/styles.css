@@ -297,6 +297,150 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 .error { color: var(--red); margin-top: 10px; min-height: 20px; font-weight: 700; }
 .rules { margin-top: 18px; color: var(--ink-soft); font-size: 16px; line-height: 1.8; }
 
+/* ------------------------------------------------------------------ */
+/* 정보 페이지 (게임 방법 / 소개 / 개인정보처리방침)                    */
+/* ------------------------------------------------------------------ */
+
+.page {
+  position: relative; z-index: 1;
+  max-width: 720px; margin: 4vh auto; padding: 26px 24px;
+  background: var(--paper-2); border: 3px solid var(--ink);
+  border-radius: var(--wob); box-shadow: 5px 6px 0 rgba(47,42,38,.85);
+}
+.page-head { margin-bottom: 18px; }
+.page-home {
+  display: inline-block; margin-bottom: 12px; padding: 4px 12px;
+  font-size: 14px; font-weight: 700; color: var(--ink); text-decoration: none;
+  background: var(--paper); border: 2.5px solid var(--ink); border-radius: var(--wob-2);
+  box-shadow: 1px 2px 0 rgba(47,42,38,.85);
+}
+.page-home:hover { background: var(--yellow); }
+.page h1 { font-family: 'Jua', var(--hand); font-size: 32px; margin: 0 0 8px; }
+.page h2 {
+  font-family: 'Jua', var(--hand); font-size: 21px; margin: 0 0 10px;
+  padding-bottom: 6px; border-bottom: 2.5px dashed rgba(47,42,38,.3);
+}
+.page h3 { font-size: 17px; margin: 0 0 4px; }
+.page p { line-height: 1.75; margin: 0 0 10px; }
+.page-lead { color: var(--ink-soft); }
+.page-sec { margin-bottom: 26px; }
+.page-note { font-size: 14px; color: var(--ink-soft); }
+
+.flowline {
+  background: var(--paper); border: 2.5px dashed var(--ink); border-radius: var(--wob-2);
+  padding: 12px 14px; text-align: center; font-weight: 700; font-size: 15px;
+}
+
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.steps > li { display: flex; gap: 12px; align-items: flex-start; }
+.steps .s-ic { font-size: 26px; line-height: 1.2; flex: 0 0 34px; text-align: center; }
+.steps p { font-size: 15px; color: var(--ink-soft); margin-bottom: 6px; }
+.steps em { font-style: normal; font-weight: 700; color: var(--ink); }
+
+.wincards { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.wincard {
+  flex: 1 1 220px; padding: 12px 14px;
+  border: 2.5px solid var(--ink); border-radius: var(--wob-2);
+}
+.wincard h3 { font-family: 'Jua', var(--hand); font-size: 18px; }
+.wincard p { font-size: 14px; margin: 0; }
+.wincard.win-cit { background: #dff0dc; }
+.wincard.win-maf { background: #fbdcd2; }
+
+.plainlist { margin: 0; padding-left: 20px; }
+.plainlist li { line-height: 1.75; margin-bottom: 5px; font-size: 15px; }
+
+.page-cta { text-align: center; margin: 26px 0 8px; }
+.ctabtn {
+  display: inline-block; padding: 13px 28px; text-decoration: none;
+  font-family: 'Jua', var(--hand); font-size: 20px; color: var(--ink);
+  background: var(--yellow); border: 3px solid var(--ink);
+  border-radius: var(--wob); box-shadow: 4px 5px 0 rgba(47,42,38,.85);
+}
+.ctabtn:hover { transform: translate(-1px,-1px); }
+
+/* 만든 사람 */
+.makers { display: flex; gap: 10px; flex-wrap: wrap; }
+.maker {
+  display: flex; align-items: center; gap: 8px; padding: 9px 16px;
+  background: var(--paper); border: 2.5px solid var(--ink); border-radius: var(--wob-2);
+}
+.m-emoji { font-size: 20px; }
+.m-name { font-family: 'Jua', var(--hand); font-size: 18px; }
+
+/* 후원 계좌 */
+.coffee {
+  background: #fdf0cd; border: 2.5px solid var(--ink);
+  border-radius: var(--wob-2); padding: 14px 16px;
+}
+.coffee-msg { font-family: 'Jua', var(--hand); font-size: 18px; margin-bottom: 10px !important; }
+.acctbox { background: var(--paper-2); border: 2.5px solid var(--ink); border-radius: 10px; padding: 10px 12px; }
+.acct-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acct-bank {
+  font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+  background: var(--ink); color: var(--paper-2);
+}
+.acct-no {
+  font-family: ui-monospace, Consolas, monospace; font-size: 18px; font-weight: 700;
+  letter-spacing: .5px; word-break: break-all;
+}
+.acct-line.small .acct-no { font-size: 15px; }
+.acct-owner { margin-top: 5px; font-size: 13px; color: var(--ink-soft); }
+.copybtn {
+  padding: 3px 12px; font-size: 13px; min-height: 0;
+  box-shadow: 1px 2px 0 rgba(47,42,38,.85);
+}
+.copybtn.copied { background: var(--green); color: #fff; }
+.mailline a { font-weight: 700; color: var(--blue); }
+
+.legal h2 { margin-top: 22px; }
+.legal ul { margin: 0 0 10px; padding-left: 20px; }
+.legal li { line-height: 1.75; margin-bottom: 5px; }
+.legal a { color: var(--blue); word-break: break-all; }
+.legal-meta {
+  margin-top: 22px; padding-top: 12px; border-top: 2.5px dashed rgba(47,42,38,.3);
+  font-size: 14px; color: var(--ink-soft);
+}
+
+/* ---------- 공통 푸터 ---------- */
+
+.gmfooter {
+  margin-top: 24px; padding-top: 14px;
+  border-top: 2.5px dashed rgba(47,42,38,.3); text-align: center;
+}
+.gmfooter nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; }
+.gmfooter nav a {
+  font-size: 14px; font-weight: 700; color: var(--ink); text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.gmfooter nav a:hover { border-bottom-color: var(--ink); }
+.foot-copy { margin: 8px 0 0 !important; font-size: 12px; color: var(--ink-soft); }
+
+/* ---------- 랜딩의 만든 사람/후원 축약 블록 ---------- */
+
+.howtobtn {
+  display: block; margin-top: 8px; padding: 11px; text-align: center;
+  text-decoration: none; font-weight: 700; font-size: 15px; color: var(--ink);
+  background: var(--paper); border: 2.5px solid var(--ink);
+  border-radius: var(--wob); box-shadow: 2px 3px 0 rgba(47,42,38,.85);
+}
+.howtobtn:hover { background: var(--yellow); }
+
+.credits {
+  margin-top: 18px; padding: 13px 15px;
+  background: var(--paper); border: 2.5px solid var(--ink); border-radius: var(--wob-2);
+}
+.cr-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.cr-label { font-size: 13px; color: var(--ink-soft); }
+.cr-names { font-family: 'Jua', var(--hand); font-size: 16px; }
+.cr-coffee { padding-top: 9px; border-top: 2px dashed rgba(47,42,38,.25); }
+.cr-msg { display: block; font-size: 14px; margin-bottom: 7px; }
+.cr-more {
+  display: inline-block; margin-top: 9px; font-size: 13px; font-weight: 700;
+  color: var(--blue); text-decoration: none;
+}
+.cr-more:hover { text-decoration: underline; }
+
 /* ---------- 로비 ---------- */
 
 .lobbyscreen { max-width: 480px; }
@@ -850,6 +994,19 @@ canvas.drawable { border-color: var(--blue); box-shadow: 4px 5px 0 var(--blue); 
 
   .livetype { padding: 8px 11px; }
   .lt-text { font-size: 19px; }
+
+  /* 정보 페이지 */
+  .page { margin: 2vh auto; padding: 18px 16px; }
+  .page h1 { font-size: 25px; }
+  .page h2 { font-size: 19px; }
+  .steps > li { gap: 9px; }
+  .steps .s-ic { font-size: 22px; flex-basis: 28px; }
+  .wincard { flex: 1 1 100%; }
+  .acct-no { font-size: 16px; }
+  .acct-line.small .acct-no { font-size: 14px; }
+  .gmfooter nav { gap: 6px 10px; }
+  .gmfooter nav a { font-size: 13px; }
+  .ctabtn { font-size: 18px; padding: 12px 22px; }
 
   /* 로비 */
   .qb-main { font-size: 23px; }

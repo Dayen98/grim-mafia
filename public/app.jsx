@@ -76,6 +76,9 @@ const I18N = {
     sMafia: '마피아 수', sMafiaH: '자동이면 지금 인원 기준 {n}명', personCnt: '명',
     ltLabel: '입력 중', ltEmpty: '아직 아무것도 안 썼어요',
     soundOn: '소리 끄기', soundOff: '소리 켜기',
+    howToPlay: '게임 방법', aboutPage: '소개', privacyPage: '개인정보처리방침', contactPage: '문의',
+    madeBy: '만든 사람', coffeeMsg: '재밌게 하셨다면 커피 한 잔 사주세요!',
+    copy: '복사', copied: '복사됨 ✓', acctOwner: '예금주', moreAbout: '더 알아보기',
     noticeAndHelp: '공지 · 문의하기',
     fbTitle: '문의 / 피드백 보내기',
     fbPh: '불편한 점, 버그, 아이디어를 자유롭게 적어주세요.',
@@ -219,6 +222,9 @@ const I18N = {
     sMafia: 'Impostors', sMafiaH: 'Auto = {n} for the current player count', personCnt: '',
     ltLabel: 'TYPING', ltEmpty: 'nothing typed yet',
     soundOn: 'Mute', soundOff: 'Unmute',
+    howToPlay: 'How to play', aboutPage: 'About', privacyPage: 'Privacy', contactPage: 'Contact',
+    madeBy: 'Made by', coffeeMsg: 'Enjoyed it? Buy us a coffee!',
+    copy: 'Copy', copied: 'Copied ✓', acctOwner: 'Account holder', moreAbout: 'Learn more',
     noticeAndHelp: 'News · Contact us',
     fbTitle: 'Send feedback',
     fbPh: 'Tell us about bugs, annoyances or ideas.',
@@ -841,8 +847,20 @@ function RoomBrowser({ socket, onJoin, busy }) {
 }
 
 /** 공지 + 문의하기 (로비 하단) */
-function NoticeAndFeedback({ socket, nick }) {
+function NoticeAndFeedback({ socket, nick, openSignal }) {
   const [open, setOpen] = useState(false);
+  const boxRef = useRef(null);
+
+  // 푸터에서 '문의'를 누르면 열고 그 위치로 스크롤
+  useEffect(() => {
+    if (!openSignal) return;
+    setOpen(true);
+    const timer = setTimeout(() => {
+      if (boxRef.current) boxRef.current.scrollIntoView({ block: 'center' });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [openSignal]);
+
   const [notices, setNotices] = useState([]);
   const [text, setText] = useState('');
   const [contact, setContact] = useState('');
@@ -877,7 +895,7 @@ function NoticeAndFeedback({ socket, nick }) {
 
   return (
     <React.Fragment>
-      <button className="folder" onClick={() => setOpen((v) => !v)}>
+      <button className="folder" ref={boxRef} onClick={() => setOpen((v) => !v)}>
         {open ? '▾' : '▸'} 📢 {t('noticeAndHelp')}
       </button>
       {open && (
@@ -943,6 +961,7 @@ function LobbyScreen({ socket, connected, nick, avatar, onLang, onBack, onEnter,
   const [isPublic, setIsPublic] = useState(true);
   const [showBrowse, setShowBrowse] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [contactSignal, setContactSignal] = useState(0); // 푸터의 '문의' → 문의 폼 열기
 
   const go = (event, extra) => {
     if (!connected) return;
@@ -1046,7 +1065,8 @@ function LobbyScreen({ socket, connected, nick, avatar, onLang, onBack, onEnter,
         </div>
       )}
 
-      <NoticeAndFeedback socket={socket} nick={nick} />
+      <NoticeAndFeedback socket={socket} nick={nick} openSignal={contactSignal} />
+      <GameFooter onContact={() => setContactSignal((n) => n + 1)} />
     </div>
   );
 }
@@ -1108,20 +1128,96 @@ function Home({ socket, connected, onLang, onReady }) {
         {t('goLobby')}
       </button>
 
+      {/* 자세한 설명은 별도 페이지로 (검색엔진이 읽을 수 있는 실제 주소) */}
+      <a className="howtobtn" href="/how-to-play">
+        📖 {t('howToPlay')}
+      </a>
+
       <div className="error">{connected ? error : t('connecting')}</div>
 
-      <div className="rules">
-        <b>{t('rulesTitle')}</b>
-        {t('rulesSum')
-          .split('\n')
-          .map((line, i) => (
-            <React.Fragment key={i}>
-              <br />
-              {line}
-            </React.Fragment>
-          ))}
-      </div>
+      <CreditsBlock />
+      <GameFooter />
     </div>
+  );
+}
+
+/** 랜딩 맨 아래 '만든 사람 + 후원' 축약 블록 (/about 의 요약판) */
+function CreditsBlock() {
+  const ACCT = '352-1962-6796-13';
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    const done = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ACCT).then(done, done);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = ACCT;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        done();
+      } catch (_) {
+        /* 무시 */
+      }
+      document.body.removeChild(ta);
+    }
+  };
+
+  return (
+    <div className="credits">
+      <div className="cr-row">
+        <span className="cr-label">{t('madeBy')}</span>
+        <span className="cr-names">다영 · 민우</span>
+      </div>
+      <div className="cr-coffee">
+        <span className="cr-msg">☕ {t('coffeeMsg')}</span>
+        <div className="acct-line small">
+          <span className="acct-bank">농축협</span>
+          <span className="acct-no">{ACCT}</span>
+          <button type="button" className={'copybtn' + (copied ? ' copied' : '')} onClick={copy}>
+            {copied ? t('copied') : t('copy')}
+          </button>
+        </div>
+        <div className="acct-owner">{t('acctOwner')}: 강다영</div>
+      </div>
+      <a className="cr-more" href="/about">
+        {t('moreAbout')} ›
+      </a>
+    </div>
+  );
+}
+
+/** 모든 화면 하단 공통 푸터. onContact가 있으면 문의 폼으로 연결한다. */
+function GameFooter({ onContact }) {
+  return (
+    <footer className="gmfooter">
+      <nav>
+        <a href="/how-to-play">{t('howToPlay')}</a>
+        <a href="/about">{t('aboutPage')}</a>
+        <a href="/privacy">{t('privacyPage')}</a>
+        {onContact ? (
+          <a
+            href="#contact"
+            onClick={(e) => {
+              e.preventDefault();
+              onContact();
+            }}
+          >
+            {t('contactPage')}
+          </a>
+        ) : (
+          <a href="/about#contact">{t('contactPage')}</a>
+        )}
+      </nav>
+      <p className="foot-copy">그림 마피아 · 운영자 강다영</p>
+    </footer>
   );
 }
 

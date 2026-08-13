@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /debug/
+Disallow: /healthz
+
+Sitemap: https://grim-mafia.onrender.com/sitemap.xml

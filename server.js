@@ -1131,10 +1131,43 @@ const feedbackRecent = []; // 재시작 전까지만 메모리에 보관
 /* 정적 파일 서빙                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * 정보 페이지를 확장자 없는 실제 경로로 서빙한다.
+ * 게임 화면은 해시(#방코드)를 쓰기 때문에 검색엔진 입장에서는 한 페이지로 보이는데,
+ * 이 페이지들은 각자 고유 URL + JS 없이 읽히는 HTML이라 그대로 크롤링된다.
+ *
+ * express.static 보다 먼저 등록해야 .html 주소가 정규 경로로 넘어간다.
+ * (안 그러면 같은 내용이 두 URL로 잡혀 중복 콘텐츠가 된다)
+ */
+const INFO_PAGES = ['how-to-play', 'about', 'privacy'];
+for (const name of INFO_PAGES) {
+  app.get('/' + name + '.html', (req, res) => res.redirect(301, '/' + name));
+  app.get('/' + name, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', name + '.html'));
+  });
+}
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/vendor/react', express.static(path.join(__dirname, 'node_modules/react/umd')));
 app.use('/vendor/react-dom', express.static(path.join(__dirname, 'node_modules/react-dom/umd')));
 app.use('/vendor/babel', express.static(path.join(__dirname, 'node_modules/@babel/standalone')));
+
+const SITE_URL = process.env.SITE_URL || 'https://grim-mafia.onrender.com';
+
+app.get('/sitemap.xml', (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const urls = ['', ...INFO_PAGES.map((p) => p)];
+  const body = urls
+    .map((p) => {
+      const loc = SITE_URL + '/' + p;
+      const prio = p === '' ? '1.0' : '0.8';
+      return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n    <priority>${prio}</priority>\n  </url>`;
+    })
+    .join('\n');
+  res.type('application/xml').send(
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`
+  );
+});
 
 app.get('/healthz', (req, res) => {
   res.json({ ok: true, rooms: rooms.size });
