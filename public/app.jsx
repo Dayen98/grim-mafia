@@ -1014,13 +1014,32 @@ function LangToggle({ onChange, compact }) {
   );
 }
 
-function Logo({ small }) {
+function Logo({ small, secret }) {
+  /* 우리끼리만 아는 진입점: 3초 안에 로고를 5번 누르면 관리자 페이지로.
+     화면에는 어떤 안내도 남기지 않는다. */
+  const tapsRef = useRef([]);
+  const onSecretTap = () => {
+    if (!secret) return;
+    const now = Date.now();
+    const taps = tapsRef.current.filter((ts) => now - ts < 3000); // t는 번역 함수라 이름을 피함
+    taps.push(now);
+    tapsRef.current = taps;
+    if (taps.length >= 5) {
+      tapsRef.current = [];
+      location.href = '/admin';
+    }
+  };
+
+  return <LogoInner small={small} onTap={onSecretTap} />;
+}
+
+function LogoInner({ small, onTap }) {
   const word1 = ['그', '림'];
   const word2 = ['마', '피', '아'];
   const tilt = [-6, 4, -3, 6, -5];
 
   return (
-    <div className={'logo' + (small ? ' logo-sm' : '')}>
+    <div className={'logo' + (small ? ' logo-sm' : '')} onPointerUp={onTap}>
       <svg className="logo-blob" viewBox="0 0 420 200" aria-hidden="true">
         <path d="M28 96 C 18 40, 92 14, 168 20 C 246 26, 330 8, 380 44
                  C 420 74, 400 140, 348 164 C 292 190, 180 178, 116 176
@@ -1381,7 +1400,7 @@ function Home({ socket, connected, onLang, onReady }) {
         <SoundToggle compact />
         <LangToggle onChange={onLang} compact />
       </div>
-      <Logo />
+      <Logo secret />
 
       <div className="field">
         <label>{t('nick')}</label>

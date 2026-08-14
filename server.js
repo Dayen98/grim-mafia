@@ -7,6 +7,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const http = require('http');
 const express = require('express');
 const { Server } = require('socket.io');
@@ -1124,8 +1125,61 @@ const NOTICES = [
   },
 ];
 
-const FEEDBACK_FILE = path.join(__dirname, 'feedback.log');
-const feedbackRecent = []; // 재시작 전까지만 메모리에 보관
+/**
+ * 문의/피드백 저장소.
+ *
+ * ⚠️ 주의: 별도 DB 없이 서버 파일(feedback.json)에 쌓습니다.
+ *    Render 무료/기본 플랜은 디스크가 임시(ephemeral)라서
+ *    재배포·재시작·슬립 해제 시 이 파일이 통째로 사라질 수 있습니다.
+ *    즉 여기 쌓인 문의는 영구 보관이 보장되지 않습니다.
+ *    영구 보관이 필요하면 외부 DB(예: Supabase, MongoDB Atlas)나
+ *    Render의 유료 Persistent Disk를 붙여야 합니다.
+ *    그때까지는 아래 알림 메일(또는 서버 로그)이 실질적인 백업 역할을 합니다.
+ */
+const FEEDBACK_FILE = path.join(__dirname, 'feedback.json');
+const FEEDBACK_LEGACY = path.join(__dirname, 'feedback.log'); // 예전 줄단위 로그
+const MAX_FEEDBACK = 2000;
+
+let feedbackAll = [];
+
+function loadFeedback() {
+  try {
+    if (fs.existsSync(FEEDBACK_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(FEEDBACK_FILE, 'utf8'));
+      if (Array.isArray(parsed)) feedbackAll = parsed;
+      return;
+    }
+    // 예전 형식(JSON 한 줄씩)이 남아 있으면 옮겨 담는다
+    if (fs.existsSync(FEEDBACK_LEGACY)) {
+      feedbackAll = fs
+        .readFileSync(FEEDBACK_LEGACY, 'utf8')
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((l) => {
+          try {
+            return JSON.parse(l);
+          } catch (_) {
+            return null;
+          }
+        })
+        .filter(Boolean);
+    }
+  } catch (err) {
+    console.error('[문의] 불러오기 실패:', err.message);
+    feedbackAll = [];
+  }
+}
+
+function saveFeedback() {
+  try {
+    fs.writeFileSync(FEEDBACK_FILE, JSON.stringify(feedbackAll, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[문의] 저장 실패:', err.message);
+  }
+}
+
+loadFeedback();
 
 /* ------------------------------------------------------------------ */
 /* 정적 파일 서빙                                                      */
@@ -1147,10 +1201,113 @@ for (const name of INFO_PAGES) {
   });
 }
 
+app.use(express.json({ limit: '64kb' }));
+
+/* 관리자 페이지. 이 HTML 자체에는 문의 내용도 비밀번호도 들어 있지 않고,
+   비밀번호가 맞을 때만 아래 API가 목록을 내려준다. */
+app.get('/admin', (req, res) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+app.get('/admin.html', (req, res) => res.redirect(301, '/admin'));
+
+app.post('/admin/feedback', (req, res) => {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?';
+
+  if (tooManyFails(ip)) {
+    return res.status(429).json({ ok: false, error: '시도가 너무 많습니다. 10분 뒤 다시 시도해주세요.' });
+  }
+  if (!ADMIN_PASSWORD) {
+    return res
+      .status(503)
+      .json({ ok: false, error: '관리자 비밀번호가 설정되지 않았습니다. (환경변수 ADMIN_PASSWORD)' });
+  }
+  if (!passwordMatches(req.body && req.body.password)) {
+    noteFail(ip);
+    return res.status(401).json({ ok: false, error: '비밀번호가 올바르지 않습니다.' });
+  }
+
+  adminFails.delete(ip);
+  // 최신순(받은 시간 내림차순)
+  const list = feedbackAll
+    .slice()
+    .sort((a, b) => String(b.at).localeCompare(String(a.at)))
+    .map((f) => ({ at: f.at, nick: f.nick || '', contact: f.contact || '', text: f.text || '' }));
+  res.json({ ok: true, total: list.length, items: list });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/vendor/react', express.static(path.join(__dirname, 'node_modules/react/umd')));
 app.use('/vendor/react-dom', express.static(path.join(__dirname, 'node_modules/react-dom/umd')));
 app.use('/vendor/babel', express.static(path.join(__dirname, 'node_modules/@babel/standalone')));
+
+/* ------------------------------------------------------------------ */
+/* 관리자 (문의 열람)                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 관리자 비밀번호는 코드가 아니라 환경변수로만 받는다.
+ * 설정되어 있지 않으면 어떤 비밀번호도 통과시키지 않는다(기본값 없음).
+ * Render → 서비스 → Environment 에서 ADMIN_PASSWORD 를 추가/변경하면 된다.
+ */
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+
+/** 길이가 달라도 시간차로 추측당하지 않도록 고정 길이로 비교 */
+function passwordMatches(input) {
+  if (!ADMIN_PASSWORD) return false;
+  const a = crypto.createHash('sha256').update(String(input || '')).digest();
+  const b = crypto.createHash('sha256').update(ADMIN_PASSWORD).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
+// 무차별 대입을 늦추기 위한 아주 단순한 제한 (IP당 실패 횟수)
+const adminFails = new Map();
+function tooManyFails(ip) {
+  const rec = adminFails.get(ip);
+  if (!rec) return false;
+  if (Date.now() - rec.at > 10 * 60 * 1000) {
+    adminFails.delete(ip);
+    return false;
+  }
+  return rec.n >= 10;
+}
+function noteFail(ip) {
+  const rec = adminFails.get(ip) || { n: 0, at: Date.now() };
+  rec.n++;
+  rec.at = Date.now();
+  adminFails.set(ip, rec);
+}
+
+/**
+ * 알림 메일 (선택).
+ * 지금은 실제로 보내지 않고 로그만 남긴다.
+ * 메일을 붙이려면 nodemailer 설치 후 아래 주석대로 채우면 된다.
+ */
+const MAIL_TO = 'opqnetworks@gmail.com';
+const MAIL_CC = ['smw950105@gmail.com', '7671110v@gmail.com'];
+
+function notifyFeedbackMail(entry) {
+  // 메일 발송을 켜려면:
+  //   1) npm i nodemailer
+  //   2) Render 환경변수에 MAIL_USER(보내는 Gmail 주소), MAIL_PASS(구글 '앱 비밀번호') 추가
+  //   3) 아래 주석을 풀고 위쪽에 const nodemailer = require('nodemailer'); 추가
+  //
+  // if (!process.env.MAIL_USER || !process.env.MAIL_PASS) return;
+  // const tx = nodemailer.createTransport({
+  //   service: 'gmail',
+  //   auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS },
+  // });
+  // tx.sendMail({
+  //   from: process.env.MAIL_USER,
+  //   to: MAIL_TO,
+  //   cc: MAIL_CC.join(','),
+  //   subject: '[그림 마피아] 새 문의',
+  //   text: `보낸 사람: ${entry.nick}\n연락처: ${entry.contact || '(없음)'}\n받은 시간: ${entry.at}\n\n${entry.text}`,
+  // }).catch((err) => console.error('[문의] 메일 실패:', err.message));
+
+  console.log(`[문의] 알림 대상 ${MAIL_TO} (참조 ${MAIL_CC.join(', ')}) — 메일 발송은 미설정`);
+}
 
 const SITE_URL = process.env.SITE_URL || 'https://grim-mafia.onrender.com';
 
@@ -1212,13 +1369,14 @@ io.on('connection', (socket) => {
       if (typeof cb === 'function') cb({ ok: false, error: '내용을 입력해주세요.' });
       return;
     }
-    const line = JSON.stringify({ at: new Date().toISOString(), nick, contact, text });
-    console.log('[문의]', line);
-    feedbackRecent.push(line);
-    if (feedbackRecent.length > 200) feedbackRecent.shift();
-    fs.appendFile(FEEDBACK_FILE, line + '\n', (err) => {
-      if (err) console.error('[문의] 파일 기록 실패', err.message);
-    });
+    const entry = { at: new Date().toISOString(), nick, contact, text };
+    console.log('[문의]', JSON.stringify(entry));
+
+    feedbackAll.push(entry);
+    if (feedbackAll.length > MAX_FEEDBACK) feedbackAll.splice(0, feedbackAll.length - MAX_FEEDBACK);
+    saveFeedback();
+    notifyFeedbackMail(entry);
+
     if (typeof cb === 'function') cb({ ok: true });
   });
 

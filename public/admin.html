@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#fbf3e2" />
+    <!-- 검색에 잡히면 안 되는 페이지 -->
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <title>관리자</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔒</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page admin-page">
+      <!-- 로그인 화면: 비밀번호가 맞기 전에는 이것만 보인다 -->
+      <div id="loginView">
+        <h1>🔒 관리자</h1>
+        <form id="loginForm" autocomplete="off">
+          <label class="adm-label" for="pw">비밀번호</label>
+          <input id="pw" type="password" autocomplete="current-password" />
+          <div class="error" id="loginErr"></div>
+          <button class="primary" style="width: 100%" id="loginBtn">확인</button>
+        </form>
+      </div>
+
+      <!-- 목록 화면: 로그인 성공 후에만 채워진다 -->
+      <div id="listView" hidden>
+        <div class="adm-top">
+          <h1>📮 문의함</h1>
+          <div class="adm-actions">
+            <span class="adm-count" id="count"></span>
+            <button id="reloadBtn">새로고침</button>
+            <button id="logoutBtn">잠그기</button>
+          </div>
+        </div>
+        <div id="items"></div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var loginView = document.getElementById('loginView');
+        var listView = document.getElementById('listView');
+        var form = document.getElementById('loginForm');
+        var pw = document.getElementById('pw');
+        var err = document.getElementById('loginErr');
+        var items = document.getElementById('items');
+        var count = document.getElementById('count');
+
+        // 비밀번호는 이 페이지가 열려 있는 동안만 메모리에 두고,
+        // 저장하거나 화면에 남기지 않는다.
+        var current = '';
+
+        function esc(s) {
+          return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+          });
+        }
+
+        function fmt(iso) {
+          var d = new Date(iso);
+          if (isNaN(d)) return esc(iso);
+          var p = function (n) { return (n < 10 ? '0' : '') + n; };
+          return (
+            d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+            ' ' + p(d.getHours()) + ':' + p(d.getMinutes())
+          );
+        }
+
+        function render(data) {
+          count.textContent = '총 ' + data.total + '건';
+          if (!data.items.length) {
+            items.innerHTML = '<p class="emptyrooms">아직 들어온 문의가 없습니다.</p>';
+            return;
+          }
+          items.innerHTML = data.items
+            .map(function (f) {
+              var contact = f.contact
+                ? '<a href="mailto:' + esc(f.contact) + '">' + esc(f.contact) + '</a>'
+                : '<span class="muted">연락처 없음</span>';
+              return (
+                '<div class="fbitem">' +
+                '<div class="fb-top">' +
+                '<span class="fb-time">' + fmt(f.at) + '</span>' +
+                (f.nick ? '<span class="fb-nick">' + esc(f.nick) + '</span>' : '') +
+                '<span class="fb-contact">' + contact + '</span>' +
+                '</div>' +
+                '<div class="fb-body">' + esc(f.text) + '</div>' +
+                '</div>'
+              );
+            })
+            .join('');
+        }
+
+        function load(password) {
+          err.textContent = '';
+          return fetch('/admin/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: password }),
+          })
+            .then(function (r) {
+              return r.json().then(function (j) { return { status: r.status, body: j }; });
+            })
+            .then(function (res) {
+              if (res.status === 200 && res.body.ok) {
+                current = password;
+                loginView.hidden = true;
+                listView.hidden = false;
+                render(res.body);
+                return true;
+              }
+              // 실패하면 목록을 아예 그리지 않는다
+              listView.hidden = true;
+              loginView.hidden = false;
+              items.innerHTML = '';
+              err.textContent = (res.body && res.body.error) || '확인에 실패했습니다.';
+              return false;
+            })
+            .catch(function () {
+              err.textContent = '서버에 연결하지 못했습니다.';
+              return false;
+            });
+        }
+
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var v = pw.value;
+          if (!v) { err.textContent = '비밀번호를 입력해주세요.'; return; }
+          load(v).then(function (ok) { if (ok) pw.value = ''; });
+        });
+
+        document.getElementById('reloadBtn').addEventListener('click', function () {
+          if (current) load(current);
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', function () {
+          current = '';
+          items.innerHTML = '';
+          count.textContent = '';
+          listView.hidden = true;
+          loginView.hidden = false;
+          pw.value = '';
+        });
+      })();
+    </script>
+  </body>
+</html>

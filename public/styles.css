@@ -402,6 +402,30 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
   font-size: 14px; color: var(--ink-soft);
 }
 
+/* ---------- 관리자 페이지 ---------- */
+
+.admin-page { max-width: 640px; }
+.adm-label { display: block; margin-bottom: 6px; font-size: 14px; color: var(--ink-soft); }
+.adm-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.adm-top h1 { margin: 0; }
+.adm-actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.adm-actions button { padding: 4px 12px; font-size: 13px; min-height: 0; }
+.adm-count { font-size: 13px; color: var(--ink-soft); }
+
+.fbitem {
+  background: var(--paper); border: 2.5px solid var(--ink);
+  border-radius: var(--wob-2); padding: 11px 13px; margin-bottom: 9px;
+}
+.fb-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.fb-time { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.fb-nick {
+  font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+  background: var(--yellow); border: 2px solid var(--ink);
+}
+.fb-contact { margin-left: auto; font-size: 13px; }
+.fb-contact a { color: var(--blue); word-break: break-all; }
+.fb-body { white-space: pre-wrap; word-break: break-word; line-height: 1.7; font-size: 15px; }
+
 /* ---------- 공통 푸터 ---------- */
 
 .gmfooter {
