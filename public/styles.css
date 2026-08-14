@@ -763,6 +763,7 @@ canvas.drawable { border-color: var(--blue); box-shadow: 4px 5px 0 var(--blue); 
   animation: tfPop .35s cubic-bezier(.2,1.4,.4,1);
 }
 .tf-card.mine { background: #fdf0cd; border-color: var(--blue); box-shadow: 7px 8px 0 var(--blue); }
+.tf-av { margin-bottom: 2px; }
 .tf-nick { font-family: 'Jua', var(--hand); font-size: 36px; color: var(--blue); }
 .tf-big { font-family: 'Jua', var(--hand); font-size: 30px; }
 .tf-sub { font-size: 16px; color: var(--ink-soft); }
@@ -895,6 +896,15 @@ canvas.drawable { border-color: var(--blue); box-shadow: 4px 5px 0 var(--blue); 
 .gp-opt:hover:not(.dim) { background: var(--yellow); }
 .gp-opt.dim { opacity: .5; cursor: default; box-shadow: none; }
 .gp-textform { margin-top: 10px; }
+
+/* 마피아로 지목된 사람 얼굴 */
+.gp-who { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-bottom: 6px; }
+.gp-whonick { font-family: 'Jua', var(--hand); font-size: 22px; color: var(--red); }
+
+/* 결과 화면의 마피아 얼굴들 */
+.mafiafaces { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+.mafiaface { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.mf-nick { font-family: 'Jua', var(--hand); font-size: 15px; color: var(--danger); }
 
 .hintbox {
   display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;

@@ -143,7 +143,7 @@ function pickWordFor(room) {
 
 /* ---------------- 캐릭터(아바타) ---------------- */
 
-const AVATAR_LIMITS = { skin: 6, hair: 7, hairColor: 6, eyes: 6, mouth: 6, acc: 6 };
+const AVATAR_LIMITS = { skin: 8, hair: 8, hairColor: 8, brows: 6, eyes: 8, mouth: 8, acc: 10 };
 
 function sanitizeAvatar(a) {
   const out = {};

@@ -610,80 +610,353 @@ function DrawCanvas({ strokesRef, dirtyRef, canDraw, color, size, socket }) {
 /* 캐릭터(아바타)                                                      */
 /* ------------------------------------------------------------------ */
 
-const SKINS = ['#f6c9a0', '#e8a978', '#c98352', '#8d5a34', '#f2d7c2', '#b6d99a'];
-const HAIRC = ['#2f2a26', '#6b4423', '#c98a2b', '#d94f4f', '#4a7fd4', '#9b59b6'];
-const AV_LABEL_KO = { skin: '피부색', hair: '헤어', hairColor: '머리색', eyes: '눈', mouth: '입', acc: '악세사리' };
-const AV_LABEL_EN = { skin: 'Skin', hair: 'Hair', hairColor: 'Hair color', eyes: 'Eyes', mouth: 'Mouth', acc: 'Accessory' };
-const avLabel = (k) => (LANG === 'en' ? AV_LABEL_EN : AV_LABEL_KO)[k];
-const AV_KEYS = ['skin', 'hair', 'hairColor', 'eyes', 'mouth', 'acc'];
-const AV_MAX = { skin: 6, hair: 7, hairColor: 6, eyes: 6, mouth: 6, acc: 6 };
+const SKINS = ['#f7d5b5', '#eab892', '#c98d5f', '#8d5a34', '#f5c9cf', '#9fd6a0', '#9ec9f5', '#c3a6e8'];
+const HAIRC = ['#241f1c', '#6b4423', '#e8b93a', '#e0533d', '#3f7fd6', '#4fae5e', '#b45fc9', '#f291b6'];
 
-const defaultAvatar = () => ({ skin: 0, hair: 1, hairColor: 0, eyes: 0, mouth: 0, acc: 0 });
+const AV_LABEL_KO = {
+  skin: '피부색', hair: '헤어', hairColor: '머리색',
+  brows: '눈썹', eyes: '눈', mouth: '입', acc: '악세사리',
+};
+const AV_LABEL_EN = {
+  skin: 'Skin', hair: 'Hair', hairColor: 'Hair color',
+  brows: 'Eyebrows', eyes: 'Eyes', mouth: 'Mouth', acc: 'Accessory',
+};
+const avLabel = (k) => (LANG === 'en' ? AV_LABEL_EN : AV_LABEL_KO)[k];
+
+const AV_KEYS = ['skin', 'hair', 'hairColor', 'brows', 'eyes', 'mouth', 'acc'];
+const AV_MAX = { skin: 8, hair: 8, hairColor: 8, brows: 6, eyes: 8, mouth: 8, acc: 10 };
+
+const defaultAvatar = () => ({ skin: 0, hair: 1, hairColor: 0, brows: 1, eyes: 0, mouth: 1, acc: 0 });
 const randomAvatar = () => {
   const a = {};
   AV_KEYS.forEach((k) => (a[k] = Math.floor(Math.random() * AV_MAX[k])));
   return a;
 };
 
-/** 손그림 느낌의 얼굴 SVG. size만 바꾸면 어디서든 쓸 수 있다. */
+/* 손으로 그린 낙서 얼굴.
+   굵은 잉크 선 + 삐뚤한 사각 머리통이 기본 골격이고,
+   머리카락 / 눈썹 / 눈 / 입 / 악세사리를 그 위에 얹는다. */
+
+const INK = '#1c1a18';
+const HEAD_D =
+  'M20 25 C20 16.5 27 13.2 38 12.6 C52 11.9 68 12.6 79 14.4 ' +
+  'C86.5 15.6 88.4 22 88.2 30 C88 48 87 64 85 74.2 ' +
+  'C83.6 82 74.6 85.2 62 86 C47 86.9 30 86.2 23 84 ' +
+  'C16 81.8 14.8 71 15.4 56 C15.8 44 17.2 33 20 25 Z';
+
+/** 얼굴 위에 얹는 조각들. 각 항목은 <g> 하나를 돌려준다. */
+function hairPart(i, hc) {
+  const S = { stroke: INK, strokeWidth: 3.2, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  switch (i) {
+    case 0:
+      return null; // 민머리
+    case 1: // 뾰족뾰족
+      return (
+        <g {...S} fill={hc}>
+          <path d="M19 26 L24 9 L31 22 L38 6 L45 21 L53 6 L60 21 L68 8 L74 23 L83 12 L86.5 29 C70 20 36 19 19 26 Z" />
+        </g>
+      );
+    case 2: // 짧은 머리
+      return (
+        <g {...S} fill={hc}>
+          <path d="M17.5 30 C18 16 30 11 52 11 C74 11 87 16 87.5 30 C80 20 62 17.5 52 17.5 C38 17.5 25 20 17.5 30 Z" />
+        </g>
+      );
+    case 3: // 단발 + 앞머리
+      return (
+        <g {...S} fill={hc}>
+          <path d="M16 32 C16 14 32 10 52 10 C72 10 88 14 88 32 C82 22 66 18 52 18 C38 18 22 22 16 32 Z" />
+          <path d="M16 32 C12 46 13 60 16 70 C17.5 56 17 42 19 34 Z" />
+          <path d="M88 32 C92 46 91 60 88 70 C86.5 56 87 42 85 34 Z" />
+        </g>
+      );
+    case 4: // 곱슬 아프로
+      return (
+        <g {...S} fill={hc}>
+          <circle cx="30" cy="20" r="12" />
+          <circle cx="52" cy="13" r="13" />
+          <circle cx="74" cy="20" r="12" />
+          <circle cx="20" cy="34" r="9.5" />
+          <circle cx="84" cy="34" r="9.5" />
+        </g>
+      );
+    case 5: // 묶음머리
+      return (
+        <g {...S} fill={hc}>
+          <path d="M17.5 30 C18 15 31 11 52 11 C73 11 87 15 87.5 30 C80 20 62 17.5 52 17.5 C38 17.5 25 20 17.5 30 Z" />
+          <circle cx="52" cy="7" r="8" />
+        </g>
+      );
+    case 6: // 모히칸
+      return (
+        <g {...S} fill={hc}>
+          <path d="M38 26 C39 12 46 4 52 3 C58 4 65 12 66 26 C60 21 44 21 38 26 Z" />
+        </g>
+      );
+    default: // 긴 머리
+      return (
+        <g {...S} fill={hc}>
+          <path d="M15 34 C15 13 33 9 52 9 C71 9 89 13 89 34 C83 23 66 19 52 19 C38 19 21 23 15 34 Z" />
+          <path d="M15 34 C9 54 10 74 14 88 C19 70 17 48 19 37 Z" />
+          <path d="M89 34 C95 54 94 74 90 88 C85 70 87 48 85 37 Z" />
+        </g>
+      );
+  }
+}
+
+function browsPart(i) {
+  const S = { stroke: INK, strokeWidth: 4, strokeLinecap: 'round', fill: 'none' };
+  switch (i) {
+    case 0:
+      return null;
+    case 1: // 나란히
+      return (
+        <g {...S}>
+          <path d="M28 36 L44 36" />
+          <path d="M56 36 L72 36" />
+        </g>
+      );
+    case 2: // 화남 (안쪽으로 내려감)
+      return (
+        <g {...S}>
+          <path d="M28 32 L44 39" />
+          <path d="M72 32 L56 39" />
+        </g>
+      );
+    case 3: // 슬픔 (바깥으로 내려감)
+      return (
+        <g {...S}>
+          <path d="M28 39 L44 32" />
+          <path d="M72 39 L56 32" />
+        </g>
+      );
+    case 4: // 둥근 눈썹
+      return (
+        <g {...S}>
+          <path d="M28 37 Q36 30 44 37" />
+          <path d="M56 37 Q64 30 72 37" />
+        </g>
+      );
+    default: // 굵고 진하게
+      return (
+        <g stroke={INK} strokeWidth="7" strokeLinecap="round" fill="none">
+          <path d="M29 35 L43 35" />
+          <path d="M57 35 L71 35" />
+        </g>
+      );
+  }
+}
+
+function eyesPart(i) {
+  const S = { stroke: INK, strokeWidth: 3.4, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  switch (i) {
+    case 0: // 점
+      return (
+        <g fill={INK}>
+          <circle cx="37" cy="50" r="5" />
+          <circle cx="65" cy="50" r="5" />
+        </g>
+      );
+    case 1: // 반쯤 감은 눈
+      return (
+        <g {...S} fill="none">
+          <path d="M30 50 Q37 43 44 50" />
+          <path d="M58 50 Q65 43 72 50" />
+          <circle cx="37" cy="49" r="2.4" fill={INK} />
+          <circle cx="65" cy="49" r="2.4" fill={INK} />
+        </g>
+      );
+    case 2: // 감은 눈 (웃음)
+      return (
+        <g {...S} fill="none">
+          <path d="M30 52 Q37 44 44 52" />
+          <path d="M58 52 Q65 44 72 52" />
+        </g>
+      );
+    case 3: // 반짝이는 큰 눈
+      return (
+        <g {...S}>
+          <ellipse cx="37" cy="50" rx="8" ry="9" fill="#fff" />
+          <ellipse cx="65" cy="50" rx="8" ry="9" fill="#fff" />
+          <circle cx="37.5" cy="51" r="4" fill={INK} stroke="none" />
+          <circle cx="65.5" cy="51" r="4" fill={INK} stroke="none" />
+          <circle cx="35.5" cy="48.5" r="1.6" fill="#fff" stroke="none" />
+          <circle cx="63.5" cy="48.5" r="1.6" fill="#fff" stroke="none" />
+        </g>
+      );
+    case 4: // X_X
+      return (
+        <g {...S} strokeWidth="4" fill="none">
+          <path d="M32 45 L42 55 M42 45 L32 55" />
+          <path d="M60 45 L70 55 M70 45 L60 55" />
+        </g>
+      );
+    case 5: // 별
+      return (
+        <g fill={INK}>
+          <path d="M37 43 l2.4 5.4 5.8 .6 -4.4 3.9 1.3 5.7 -5.1 -3 -5.1 3 1.3 -5.7 -4.4 -3.9 5.8 -.6 z" />
+          <path d="M65 43 l2.4 5.4 5.8 .6 -4.4 3.9 1.3 5.7 -5.1 -3 -5.1 3 1.3 -5.7 -4.4 -3.9 5.8 -.6 z" />
+        </g>
+      );
+    case 6: // 옆을 보는 눈
+      return (
+        <g {...S}>
+          <circle cx="37" cy="50" r="7.5" fill="#fff" />
+          <circle cx="65" cy="50" r="7.5" fill="#fff" />
+          <circle cx="41" cy="50" r="3.4" fill={INK} stroke="none" />
+          <circle cx="69" cy="50" r="3.4" fill={INK} stroke="none" />
+        </g>
+      );
+    default: // 어지러움 (소용돌이)
+      return (
+        <g {...S} fill="none" strokeWidth="3">
+          <circle cx="37" cy="50" r="7.5" />
+          <circle cx="37" cy="50" r="3" />
+          <circle cx="65" cy="50" r="7.5" />
+          <circle cx="65" cy="50" r="3" />
+        </g>
+      );
+  }
+}
+
+function mouthPart(i) {
+  const S = { stroke: INK, strokeWidth: 3.6, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' };
+  switch (i) {
+    case 0: // 무표정
+      return <path d="M40 69 L62 69" {...S} />;
+    case 1: // 미소
+      return <path d="M38 66 Q51 77 64 66" {...S} />;
+    case 2: // 활짝 (이빨)
+      return (
+        <g {...S}>
+          <path d="M36 64 Q51 79 66 64 Z" fill="#fff" />
+          <path d="M39 67 L63 67" strokeWidth="2.6" />
+        </g>
+      );
+    case 3: // 놀람 (동그란 입)
+      return <ellipse cx="51" cy="69" rx="7" ry="8" {...S} fill="#fff" />;
+    case 4: // 메롱
+      return (
+        <g {...S}>
+          <path d="M38 64 Q51 76 64 64" />
+          <path d="M46 71 q5 9 10 0 z" fill="#f080a0" />
+        </g>
+      );
+    case 5: // 삐뚤 (물결)
+      return <path d="M37 68 q6 -6 12 0 t12 0" {...S} />;
+    case 6: // 시무룩
+      return <path d="M38 73 Q51 62 64 73" {...S} />;
+    default: // 지그재그
+      return <path d="M36 70 l6 -6 6 6 6 -6 6 6 6 -6" {...S} />;
+  }
+}
+
+function accPart(i) {
+  const S = { stroke: INK, strokeWidth: 3.2, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  switch (i) {
+    case 0:
+      return null;
+    case 1: // 동그란 안경
+      return (
+        <g {...S} fill="none">
+          <circle cx="37" cy="50" r="11" />
+          <circle cx="65" cy="50" r="11" />
+          <path d="M48 50 L54 50" />
+        </g>
+      );
+    case 2: // 선글라스
+      return (
+        <g {...S}>
+          <path d="M25 43 H49 V52 Q37 60 25 52 Z" fill={INK} />
+          <path d="M53 43 H77 V52 Q65 60 53 52 Z" fill={INK} />
+          <path d="M49 46 L53 46" />
+        </g>
+      );
+    case 3: // 비니
+      return (
+        <g {...S}>
+          <path d="M17 30 C18 15 32 9 52 9 C72 9 86 15 87 30 Z" fill="#4fae5e" />
+          <path d="M15 29 H89 V37 H15 Z" fill="#3d8c4a" />
+          <circle cx="52" cy="6" r="4.5" fill="#3d8c4a" />
+        </g>
+      );
+    case 4: // 야구모자
+      return (
+        <g {...S}>
+          <path d="M19 29 C20 14 34 9 52 9 C70 9 84 14 85 29 Z" fill="#3f7fd6" />
+          <path d="M85 29 C95 29 99 33 99 37 L58 37 L58 29 Z" fill="#2f66b0" />
+        </g>
+      );
+    case 5: // 헤드폰
+      return (
+        <g {...S} fill="#e8b93a">
+          <path d="M14 44 C14 20 32 10 52 10 C72 10 90 20 90 44" fill="none" strokeWidth="4.5" />
+          <rect x="6" y="42" width="15" height="22" rx="6" />
+          <rect x="83" y="42" width="15" height="22" rx="6" />
+        </g>
+      );
+    case 6: // 마스크
+      return (
+        <g {...S}>
+          <path d="M28 60 H76 V72 Q52 86 28 72 Z" fill="#fff" />
+          <path d="M28 62 L16 56 M76 62 L88 56" />
+        </g>
+      );
+    case 7: // 콧수염
+      return (
+        <g {...S} fill={INK}>
+          <path d="M51 60 C45 54 34 55 32 62 C38 62 45 63 51 65 C57 63 64 62 70 62 C68 55 57 54 51 60 Z" />
+        </g>
+      );
+    case 8: // 왕관
+      return (
+        <g {...S} fill="#f2b705">
+          <path d="M24 26 L28 8 L40 20 L52 4 L64 20 L76 8 L80 26 Z" />
+        </g>
+      );
+    default: // 반창고
+      return (
+        <g {...S}>
+          <rect x="60" y="24" width="24" height="10" rx="4" fill="#f5c9cf" transform="rotate(-18 72 29)" />
+          <circle cx="70" cy="31" r="1.4" fill={INK} stroke="none" />
+          <circle cx="75" cy="28" r="1.4" fill={INK} stroke="none" />
+        </g>
+      );
+  }
+}
+
+/**
+ * 손그림 낙서 스타일 얼굴.
+ * svg에 key를 걸어 항목이 바뀌면 통째로 새로 그린다.
+ * (조각만 갈아끼우면 이전 그림이 남는 잔상이 생겼다)
+ */
 function Avatar({ a, size = 44, className }) {
-  const av = a || defaultAvatar();
+  const av = { ...defaultAvatar(), ...(a || {}) };
   const skin = SKINS[av.skin] || SKINS[0];
   const hc = HAIRC[av.hairColor] || HAIRC[0];
-  const S = { stroke: '#2f2a26', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round' };
-
-  const eyes = [
-    <g key="e0" {...S} fill="#2f2a26"><circle cx="38" cy="52" r="4.5" /><circle cx="62" cy="52" r="4.5" /></g>,
-    <g key="e1" {...S} fill="none"><path d="M32 52 q6 -8 12 0" /><path d="M56 52 q6 -8 12 0" /></g>,
-    <g key="e2" {...S} fill="none"><path d="M32 48 q6 9 12 0" /><path d="M56 48 q6 9 12 0" /></g>,
-    <g key="e3" {...S} fill="#fff"><ellipse cx="38" cy="52" rx="7" ry="8" /><ellipse cx="62" cy="52" rx="7" ry="8" />
-      <circle cx="38" cy="53" r="3" fill="#2f2a26" stroke="none" /><circle cx="62" cy="53" r="3" fill="#2f2a26" stroke="none" /></g>,
-    <g key="e4" {...S} fill="none"><path d="M33 52 h11" /><path d="M57 52 h11" /></g>,
-    <g key="e5" {...S} fill="#2f2a26"><circle cx="38" cy="52" r="6" /><circle cx="62" cy="52" r="6" />
-      <circle cx="40" cy="50" r="2" fill="#fff" stroke="none" /><circle cx="64" cy="50" r="2" fill="#fff" stroke="none" /></g>,
-  ][av.eyes] || null;
-
-  const mouth = [
-    <path key="m0" d="M40 70 q10 10 20 0" {...S} fill="none" />,
-    <path key="m1" d="M40 74 q10 -9 20 0" {...S} fill="none" />,
-    <path key="m2" d="M42 70 h16" {...S} fill="none" />,
-    <g key="m3" {...S}><path d="M38 68 q12 16 24 0 z" fill="#c9455a" /></g>,
-    <circle key="m4" cx="50" cy="71" r="6" {...S} fill="#c9455a" />,
-    <g key="m5" {...S} fill="none"><path d="M39 69 q6 8 11 0 q5 8 11 0" /></g>,
-  ][av.mouth] || null;
-
-  const hair = [
-    null,
-    <path key="h1" d="M22 44 q4 -26 28 -26 q24 0 28 26 q-6 -12 -28 -12 q-22 0 -28 12 z" fill={hc} {...S} />,
-    <g key="h2" fill={hc} {...S}><path d="M20 46 q2 -30 30 -30 q28 0 30 30 q-4 -6 -8 -4 q-6 -14 -22 -14 q-16 0 -22 14 q-4 -2 -8 4 z" />
-      <path d="M20 46 q-2 22 4 30 q-2 -18 2 -26 z" /><path d="M80 46 q2 22 -4 30 q2 -18 -2 -26 z" /></g>,
-    <g key="h3" fill={hc} {...S}><path d="M22 44 l6 -18 l8 12 l7 -18 l7 18 l8 -12 l6 18 q-20 -10 -42 0 z" /></g>,
-    <g key="h4" fill={hc} {...S}><path d="M22 44 q4 -26 28 -26 q24 0 28 26 q-6 -12 -28 -12 q-22 0 -28 12 z" />
-      <path d="M78 40 q14 6 12 24 q-2 10 -10 10 q8 -14 -4 -30 z" /></g>,
-    <g key="h5" fill={hc} {...S}><circle cx="32" cy="30" r="12" /><circle cx="50" cy="22" r="13" /><circle cx="68" cy="30" r="12" />
-      <circle cx="26" cy="44" r="9" /><circle cx="74" cy="44" r="9" /></g>,
-    <g key="h6" fill={hc} {...S}><path d="M24 42 q6 -24 26 -24 q20 0 26 24 q-8 -10 -26 -10 q-18 0 -26 10 z" />
-      <path d="M50 12 q6 -8 12 -2 q-8 0 -10 6 z" /></g>,
-  ][av.hair] || null;
-
-  const acc = [
-    null,
-    <g key="a1" {...S} fill="none"><circle cx="38" cy="52" r="11" /><circle cx="62" cy="52" r="11" /><path d="M49 52 h2" /></g>,
-    <g key="a2" {...S}><rect x="27" y="44" width="22" height="15" rx="4" fill="#2f2a26" /><rect x="51" y="44" width="22" height="15" rx="4" fill="#2f2a26" /><path d="M49 50 h2" /></g>,
-    <g key="a3" {...S}><path d="M18 34 h64 l-6 -8 h-52 z" fill="#e4572e" /><path d="M28 26 q22 -14 44 0 z" fill="#e4572e" /></g>,
-    <g key="a4" {...S}><path d="M66 26 l10 -8 l2 12 l10 4 l-11 5 l-1 11 l-8 -8 l-11 2 l5 -10 z" fill="#f2b705" /></g>,
-    <g key="a5" {...S}><rect x="30" y="62" width="40" height="18" rx="7" fill="#7fd1e8" /><path d="M30 68 h40" /></g>,
-  ][av.acc] || null;
+  const sig = AV_KEYS.map((k) => av[k]).join('-');
 
   return (
-    <svg className={'avatar ' + (className || '')} width={size} height={size} viewBox="0 0 100 100">
-      <ellipse cx="50" cy="58" rx="30" ry="32" fill={skin} {...S} />
-      <path d="M22 58 q-6 2 -4 8 q2 5 6 3" fill={skin} {...S} />
-      <path d="M78 58 q6 2 4 8 q-2 5 -6 3" fill={skin} {...S} />
-      {hair}
-      {eyes}
-      {mouth}
-      {acc}
+    <svg
+      key={sig}
+      className={'avatar ' + (className || '')}
+      width={size}
+      height={size}
+      viewBox="0 0 104 100"
+      aria-hidden="true"
+    >
+      {/* 귀 */}
+      <g stroke={INK} strokeWidth="3.4" strokeLinejoin="round" fill={skin}>
+        <path d="M16 48 C9 47 7 53 9 58 C10.5 62 14 63 16.5 62" />
+        <path d="M88 48 C95 47 97 53 95 58 C93.5 62 90 63 87.5 62" />
+      </g>
+      {/* 머리통 */}
+      <path d={HEAD_D} fill={skin} stroke={INK} strokeWidth="4" strokeLinejoin="round" />
+      {hairPart(av.hair, hc)}
+      {browsPart(av.brows)}
+      {eyesPart(av.eyes)}
+      {mouthPart(av.mouth)}
+      {accPart(av.acc)}
     </svg>
   );
 }
@@ -1870,6 +2143,8 @@ function GuessPanel({ st, socket, liveTyping }) {
   const [typed, setTyped] = useState('');
   if (!g) return null;
   const mine = st.you.isGuesser;
+  const mafiaP = st.players.find((p) => p.id === g.mafiaId);
+  const mafiaAvatar = mafiaP ? mafiaP.avatar : null;
 
   // 마피아가 입력하는 걸 그대로 중계 (모두가 실시간으로 본다)
   const onType = (v) => {
@@ -1892,6 +2167,10 @@ function GuessPanel({ st, socket, liveTyping }) {
     return (
       <div className="panel guesspanel">
         <div className="gp-title">{t('gpTitle')}</div>
+        <div className="gp-who">
+          <Avatar a={mafiaAvatar} size={76} />
+          <span className="gp-whonick">{g.mafiaNick}</span>
+        </div>
         <p className="center">
           {t('gpLead', { nick: g.mafiaNick })}
           <br />
@@ -1999,7 +2278,18 @@ function Result({ st, socket }) {
         </div>
         <div className="result-box">
           <div className="k">{t('mafiaWas')}</div>
-          <div className="v" style={{ color: 'var(--danger)' }}>{r.mafiaNicks.join(', ')}</div>
+          {/* 닉네임만 있으면 누군지 잘 안 와닿아서 캐릭터를 같이 보여준다 */}
+          <div className="mafiafaces">
+            {r.mafiaIds.map((id, i) => {
+              const p = st.players.find((x) => x.id === id);
+              return (
+                <span className="mafiaface" key={id}>
+                  <Avatar a={p ? p.avatar : null} size={44} />
+                  <span className="mf-nick">{r.mafiaNicks[i]}</span>
+                </span>
+              );
+            })}
+          </div>
         </div>
         <div className="result-box">
           <div className="k">{t('topVote')}</div>
@@ -2113,6 +2403,8 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveT
   useEffect(() => {
     if (st.phase !== 'draw' || !st.currentDrawerId) {
       lastTurnRef.current = null;
+      // 그리기가 끝나는 순간 숨김 타이머가 취소돼 팝업이 계속 떠 있던 문제
+      setTurnFlash(null);
       return undefined;
     }
     const key = st.roundNo + ':' + st.turnIndex;
@@ -2125,6 +2417,7 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveT
     setTurnFlash({
       key,
       nick: who ? who.nick : '?',
+      avatar: who ? who.avatar : null, // 닉네임보다 캐릭터가 알아보기 쉬움
       mine: isMine,
       n: st.turnIndex + 1,
       total: st.totalTurns,
@@ -2264,6 +2557,7 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveT
       {turnFlash && !announce && (
         <div className="turnflash" key={turnFlash.key}>
           <div className={'tf-card' + (turnFlash.mine ? ' mine' : '')}>
+            <Avatar a={turnFlash.avatar} size={84} className="tf-av" />
             {turnFlash.mine ? (
               <React.Fragment>
                 <span className="tf-big">{t('tfMine')}</span>
