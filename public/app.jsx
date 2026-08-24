@@ -36,6 +36,8 @@ const I18N = {
     citizenHint: '카테고리: {cat} — 마피아가 눈치채지 못하게 조금씩만 그리세요.',
     mafiaHint: '카테고리만 알고 있습니다. 시민인 척 그림을 이어 그리고, 단어를 추측하세요!',
     citizen: '🙂 시민', mafia: '🔪 마피아', word: '단어',
+    youSpectating: '관전 중이에요', spectatorRole: '관전자',
+    spectatingHint: '참여자가 아니라서 정답을 미리 볼 수 있어요. 편하게 구경하세요!',
     revealSoon: '곧 그리기가 시작됩니다. 그리는 순서는 오른쪽 목록의 번호를 확인하세요.',
     myTurn: '✏️ 내 차례입니다! 그리세요', drawingNow: '✏️ {nick} 님이 그리는 중...',
     discussNow: '💬 토론 중 — 누가 어색했나요?', voteNow: '🗳️ 마피아를 지목하세요',
@@ -72,7 +74,11 @@ const I18N = {
     readyGo: '준비 완료 누르기', readyDone: '준비 완료 (누르면 취소)',
     readyStatus: '준비 {a}/{b}', readyHint: '모두 준비하면 방장이 시작할 수 있어요',
     waitReady: '준비 대기 중 {a}/{b}',
-    rdReady: '준비', rdWaiting: '대기', rdHost: '방장',
+    rdReady: '준비', rdWaiting: '대기', rdHost: '방장', rdSpectator: '관전 중',
+    becomeSpectatorBtn: '🔭 관전하기', becomePlayerBtn: '🎮 참여하기',
+    spectatorsN: '관전 {n}명',
+    spectatorHint: '관전자는 준비 없이 구경만 해요. 다음 라운드 전에 참여자로 바꿀 수 있어요.',
+    spectatorLocked: '라운드 중에는 바꿀 수 없어요. 라운드가 끝나면 눌러주세요.',
     sMafia: '마피아 수', sMafiaH: '자동이면 지금 인원 기준 {n}명', personCnt: '명',
     ltLabel: '입력 중', ltEmpty: '아직 아무것도 안 썼어요',
     soundOn: '소리 끄기', soundOff: '소리 켜기',
@@ -156,6 +162,8 @@ const I18N = {
       botsIn: '🤖 연습용 봇 {names} 이(가) 들어왔습니다.',
       botOut: '🤖 {nick} 이(가) 나갔습니다.',
       kicked: '⛔ {nick} 님이 방장에게 강퇴되었습니다.',
+      becameSpectator: '🔭 {nick} 님이 관전자가 되었습니다.',
+      becamePlayer: '🎮 {nick} 님이 참여자가 되었습니다.',
     },
   },
 
@@ -183,6 +191,8 @@ const I18N = {
     citizenHint: 'Category: {cat} — draw just enough, do not give it away.',
     mafiaHint: 'You only know the category. Blend in and figure out the word!',
     citizen: '🙂 Citizen', mafia: '🔪 Impostor', word: 'Word',
+    youSpectating: 'You are watching', spectatorRole: 'Spectator',
+    spectatingHint: "Since you're not playing, you get to see the answer early. Enjoy the show!",
     revealSoon: 'Drawing starts soon. Check the numbers in the player list for turn order.',
     myTurn: '✏️ Your turn! Draw', drawingNow: '✏️ {nick} is drawing...',
     discussNow: '💬 Discussing — who seemed off?', voteNow: '🗳️ Pick the impostor',
@@ -219,7 +229,11 @@ const I18N = {
     readyGo: 'I am ready', readyDone: 'Ready (tap to cancel)',
     readyStatus: 'Ready {a}/{b}', readyHint: 'The host can start once everyone is ready',
     waitReady: 'Waiting for ready {a}/{b}',
-    rdReady: 'Ready', rdWaiting: 'Waiting', rdHost: 'Host',
+    rdReady: 'Ready', rdWaiting: 'Waiting', rdHost: 'Host', rdSpectator: 'Watching',
+    becomeSpectatorBtn: '🔭 Watch only', becomePlayerBtn: '🎮 Join in',
+    spectatorsN: '{n} watching',
+    spectatorHint: 'Spectators just watch, no ready-up needed. You can switch to playing before the next round.',
+    spectatorLocked: "Can't switch mid-round — try again once the round ends.",
     sMafia: 'Impostors', sMafiaH: 'Auto = {n} for the current player count', personCnt: '',
     ltLabel: 'TYPING', ltEmpty: 'nothing typed yet',
     soundOn: 'Mute', soundOff: 'Unmute',
@@ -303,6 +317,8 @@ const I18N = {
       botsIn: '🤖 Practice bots {names} joined.',
       botOut: '🤖 {nick} left.',
       kicked: '⛔ {nick} was kicked by the host.',
+      becameSpectator: '🔭 {nick} is now watching.',
+      becamePlayer: '🎮 {nick} joined as a player.',
     },
   },
 };
@@ -1542,7 +1558,13 @@ function PlayerList({ st, socket, bubbles }) {
   return (
     <div className="panel">
       <h3>
-        {t('playersN', { a: st.players.filter((p) => p.connected).length, b: st.maxPlayers })}
+        {t('playersN', { a: st.players.filter((p) => p.connected && !p.isSpectator).length, b: st.maxPlayers })}
+        {st.players.some((p) => p.connected && p.isSpectator) && (
+          <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>
+            {' · '}
+            {t('spectatorsN', { n: st.players.filter((p) => p.connected && p.isSpectator).length })}
+          </span>
+        )}
       </h3>
       <div className="players">
         {st.players.map((p) => {
@@ -1573,21 +1595,36 @@ function PlayerList({ st, socket, bubbles }) {
               {/* 대기실에서는 준비 여부를 프로필 옆에 표시 (방장은 대상 아님) */}
               {st.phase === 'lobby' &&
                 p.connected &&
-                (p.isHost ? (
+                (p.isSpectator ? (
+                  <span className="rdbadge spectator">🔭 {t('rdSpectator')}</span>
+                ) : p.isHost ? (
                   <span className="rdbadge host">{t('rdHost')}</span>
                 ) : (
                   <span className={'rdbadge' + (st.readyIds.includes(p.id) ? ' on' : '')}>
                     {st.readyIds.includes(p.id) ? '✅ ' + t('rdReady') : '⏳ ' + t('rdWaiting')}
                   </span>
                 ))}
+              {st.phase === 'result' && p.connected && p.isSpectator && (
+                <span className="rdbadge spectator">🔭 {t('rdSpectator')}</span>
+              )}
               {st.roundNo > 0 && <span className="ptbadge">{p.score}{t('pts')}</span>}
               <span className="tag">
                 {p.isBot && '🤖'}
                 {p.isHost && '👑'}
+                {p.isSpectator && st.phase !== 'lobby' && st.phase !== 'result' && '🔭'}
                 {!p.connected && t('disconnected')}
                 {st.phase === 'vote' && st.votedIds.includes(p.id) && ' ✅'}
                 {p.id === st.currentDrawerId && ' ✏️'}
               </span>
+              {/* 대기실 토글은 Lobby 패널에 이미 있으므로, 여기서는 결과 화면(다음 판 전)에서만 보여준다 */}
+              {st.phase === 'result' && p.id === me.id && (
+                <button
+                  className={'spectbtn' + (p.isSpectator ? ' on' : '')}
+                  onClick={() => socket.emit('player:setSpectator', { spectator: !p.isSpectator })}
+                >
+                  {p.isSpectator ? t('becomePlayerBtn') : t('becomeSpectatorBtn')}
+                </button>
+              )}
               {reportOf(p.id) > 0 && me.isHost && (
                 <span className="repbadge" title={t('reported')}>
                   🚩{reportOf(p.id)}
@@ -1619,7 +1656,7 @@ function PlayerList({ st, socket, bubbles }) {
                   )}
                 </span>
               )}
-              {st.phase === 'vote' && p.id !== me.id && p.connected && (
+              {st.phase === 'vote' && p.id !== me.id && p.connected && !p.isSpectator && (
                 <button
                   className={me.myVote === p.id ? 'primary' : ''}
                   onClick={() => {
@@ -1946,7 +1983,9 @@ function SettingsPanel({ st, socket }) {
 }
 
 function Lobby({ st, socket }) {
-  const ready = st.players.filter((p) => p.connected).length;
+  // 관전자는 정원·시작 조건 계산에서 빠진다 (실제로 게임에 참여하지 않으므로)
+  const ready = st.players.filter((p) => p.connected && !p.isSpectator).length;
+  const spectating = st.players.filter((p) => p.connected && p.isSpectator).length;
   const botCount = st.players.filter((p) => p.isBot).length;
   const enoughPeople = ready >= st.minPlayers && ready <= st.maxPlayers;
   // 방장을 뺀 전원이 준비를 눌러야 시작할 수 있다
@@ -1971,7 +2010,16 @@ function Lobby({ st, socket }) {
       </div>
       <p style={{ fontSize: 18 }}>
         {t('joinedNow', { n: ready })}
+        {spectating > 0 && <span className="muted"> · {t('spectatorsN', { n: spectating })}</span>}
       </p>
+
+      <button
+        className={'spectbtn' + (st.you.isSpectator ? ' on' : '')}
+        onClick={() => socket.emit('player:setSpectator', { spectator: !st.you.isSpectator })}
+      >
+        {st.you.isSpectator ? t('becomePlayerBtn') : t('becomeSpectatorBtn')}
+      </button>
+
       {st.you.isHost ? (
         <React.Fragment>
           <button className="primary" disabled={!canStart} onClick={() => socket.emit('game:start')}>
@@ -2004,6 +2052,8 @@ function Lobby({ st, socket }) {
             </div>
           </div>
         </React.Fragment>
+      ) : st.you.isSpectator ? (
+        <p className="muted readyhint">{t('spectatorHint')}</p>
       ) : (
         <React.Fragment>
           <button
@@ -2030,6 +2080,16 @@ function Lobby({ st, socket }) {
 }
 
 function RoleCard({ you }) {
+  // 관전자는 역할이 없다 - 배정된 역할인 척하지 않고 정답을 그대로 보여준다
+  if (you.isSpectator) {
+    return (
+      <div className="rolecard spectator">
+        <div className="role">🔭 {t('youSpectating')}</div>
+        <div className="word">{you.word || catName(you.category)}</div>
+        <div className="hint">{t('spectatingHint')}</div>
+      </div>
+    );
+  }
   const mafia = you.role === 'mafia';
   return (
     <div className={'rolecard ' + (mafia ? 'mafia' : 'citizen')}>
@@ -2045,6 +2105,18 @@ function RoleCard({ you }) {
 }
 
 function RoleStrip({ you }) {
+  if (you.isSpectator) {
+    return (
+      <div className="rolestrip spectator">
+        <span>🔭 {t('spectatorRole')}</span>
+        <span className="muted">{t('category')}</span>
+        <b>{catName(you.category)}</b>
+        <span className="muted">|</span>
+        <span className="muted">{t('word')}</span>
+        <b>{you.word}</b>
+      </div>
+    );
+  }
   const mafia = you.role === 'mafia';
   return (
     <div className={'rolestrip ' + (mafia ? 'mafia' : 'citizen')}>
@@ -2087,8 +2159,9 @@ function Toolbar({ st, socket, color, setColor, size, setSize, myTurn }) {
 }
 
 function EarlyVoteBar({ st, socket }) {
-  const conn = st.players.filter((p) => p.connected);
+  const conn = st.players.filter((p) => p.connected && !p.isSpectator);
   const agreed = st.earlyVoteIds.filter((id) => conn.some((p) => p.id === id)).length;
+  if (st.you.isSpectator) return null;
   return (
     <div className="earlyvote">
       <button
@@ -2106,7 +2179,8 @@ function EarlyVoteBar({ st, socket }) {
 
 function VotePanel({ st, socket }) {
   const me = st.you;
-  const conn = st.players.filter((p) => p.connected);
+  // 관전자는 투표 대상도, 투표 인원수 계산 대상도 아니다
+  const conn = st.players.filter((p) => p.connected && !p.isSpectator);
   const others = conn.filter((p) => p.id !== me.id);
   return (
     <div className="votepanel">
@@ -2116,7 +2190,9 @@ function VotePanel({ st, socket }) {
           <button
             key={p.id}
             className={'vp-card' + (me.myVote === p.id ? ' on' : '')}
+            disabled={me.isSpectator}
             onClick={() => {
+              if (me.isSpectator) return;
               snd('vote');
               socket.emit('vote:cast', { targetId: p.id });
             }}
@@ -2761,6 +2837,9 @@ function App() {
     s.on('state', (next) => {
       setOffset(next.now - Date.now());
       setSt(next);
+      // 마피아 맞히기 화면을 벗어나면 실시간 타이핑 잔여 텍스트를 지운다
+      // (안 지우면 다음 라운드 맞히기 화면에서 지난판 텍스트가 잠깐 그대로 보임)
+      if (next.phase !== 'guess') setLiveTyping('');
     });
 
     // 디버그용: 브라우저 콘솔에서 __gm.strokes() 로 현재 획 데이터를 확인할 수 있음

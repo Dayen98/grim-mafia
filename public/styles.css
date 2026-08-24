@@ -592,6 +592,13 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 }
 .rdbadge.on { background: var(--green); color: #fff; border-color: var(--ink); }
 .rdbadge.host { background: var(--yellow); color: var(--ink); border-color: var(--ink); }
+.rdbadge.spectator { background: var(--blue); color: #fff; border-color: var(--ink); }
+
+.spectbtn {
+  font-size: 12px; padding: 2px 10px; min-height: 26px; border-radius: 999px;
+  box-shadow: 1px 1px 0 rgba(47,42,38,.7);
+}
+.spectbtn.on { background: var(--blue); color: #fff; }
 
 /* ---------- 신고 / 강퇴 ---------- */
 
@@ -661,10 +668,12 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 }
 .rolecard.citizen { background: #dff0dc; }
 .rolecard.mafia { background: #fbdcd2; }
+.rolecard.spectator { background: #dbe9fb; }
 .rolecard .role { font-family: 'Jua', var(--hand); font-size: 26px; }
 .rolecard .word { font-family: 'Jua', var(--hand); font-size: 44px; margin: 8px 0 6px; }
 .rolecard.citizen .word { color: var(--green); }
 .rolecard.mafia .word { color: var(--red); }
+.rolecard.spectator .word { color: var(--blue); }
 .rolecard .hint { color: var(--ink-soft); font-size: 16px; }
 
 .rolestrip {
@@ -673,6 +682,7 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 }
 .rolestrip.citizen { background: #dff0dc; }
 .rolestrip.mafia { background: #fbdcd2; }
+.rolestrip.spectator { background: #dbe9fb; }
 .rolestrip b { font-size: 20px; font-family: 'Jua', var(--hand); }
 
 /* ---------- 캔버스 ---------- */

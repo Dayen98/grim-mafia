@@ -377,6 +377,7 @@ function addPlayer(room, id, nick, avatar) {
     connected: true,
     score: room.scoreHistory[nick] || 0,
     avatar: av,
+    isSpectator: false,
   });
 }
 
@@ -386,6 +387,11 @@ function getPlayer(room, id) {
 
 function connectedPlayers(room) {
   return room.players.filter((p) => p.connected);
+}
+
+/** 접속 중이면서 관전자가 아닌, 실제로 게임에 참여하는 플레이어. */
+function activePlayers(room) {
+  return connectedPlayers(room).filter((p) => !p.isSpectator);
 }
 
 function destroyRoom(room) {
@@ -546,7 +552,7 @@ function scheduleBots(room) {
     bots.forEach((b, i) => {
       laterInRoom(room, 1800 + i * 700 + randInt(3000), () => {
         if (room.phase !== 'vote' || room.votes[b.id]) return;
-        const targets = connectedPlayers(room).filter((p) => p.id !== b.id);
+        const targets = activePlayers(room).filter((p) => p.id !== b.id);
         if (!targets.length) return;
         room.votes[b.id] = pick(targets).id;
         maybeFinishVote(room);
@@ -606,6 +612,7 @@ function publicState(room) {
       score: p.score || 0,
       avatar: p.avatar,
       isBot: !!p.isBot,
+      isSpectator: !!p.isSpectator,
     })),
     settings: room.settings,
     categoryList: Object.keys(CATEGORIES),
@@ -656,6 +663,7 @@ function privateFor(room, player) {
     myVote: room.votes[player.id] || null,
     earlyVoted: !!room.earlyVotes[player.id],
     isGuesser: !!(room.guess && room.guess.mafiaId === player.id),
+    isSpectator: !!player.isSpectator,
     // 신고 누적은 방장에게만 보여준다 (방장이 강퇴 판단에 쓰도록)
     reportCounts:
       player.id === room.hostId
@@ -674,12 +682,12 @@ function privateFor(room, player) {
  * 봇은 항상 준비된 것으로 본다. 방장 혼자면 바로 시작할 수 있다.
  */
 function othersReady(room) {
-  const others = connectedPlayers(room).filter((p) => p.id !== room.hostId);
+  const others = activePlayers(room).filter((p) => p.id !== room.hostId);
   return others.every((p) => p.isBot || room.ready[p.id]);
 }
 
 function readyCounts(room) {
-  const others = connectedPlayers(room).filter((p) => p.id !== room.hostId);
+  const others = activePlayers(room).filter((p) => p.id !== room.hostId);
   return {
     ready: others.filter((p) => p.isBot || room.ready[p.id]).length,
     total: others.length,
@@ -750,7 +758,7 @@ function setPhase(room, phase, durationMs, onTimeout) {
 }
 
 function startGame(room) {
-  const players = connectedPlayers(room);
+  const players = activePlayers(room);
   if (players.length < CONFIG.MIN_PLAYERS || players.length > CONFIG.MAX_PLAYERS) return;
 
   const { category, word } = pickWordFor(room);
@@ -835,7 +843,7 @@ function toggleEarlyVote(room, playerId) {
   if (agreeing) room.earlyVotes[playerId] = true;
   else delete room.earlyVotes[playerId];
 
-  const conn = connectedPlayers(room);
+  const conn = activePlayers(room);
   const agreed = conn.filter((p) => room.earlyVotes[p.id]).length;
 
   // 채팅창에도 진행 상황을 남긴다 (누가 눌렀는지 / 몇 명 찬성인지)
@@ -861,7 +869,7 @@ function startVote(room) {
 
 function maybeFinishVote(room) {
   if (room.phase !== 'vote') return;
-  const voters = connectedPlayers(room);
+  const voters = activePlayers(room);
   if (voters.length > 0 && voters.every((p) => room.votes[p.id])) {
     finishVote(room);
   } else {
@@ -878,7 +886,7 @@ function finishVote(room) {
     counts.set(targetId, (counts.get(targetId) || 0) + 1);
   }
 
-  const tally = room.players.map((p) => ({
+  const tally = room.players.filter((p) => !p.isSpectator).map((p) => ({
     id: p.id,
     nick: p.nick,
     count: counts.get(p.id) || 0,
@@ -1039,7 +1047,7 @@ function applyScores(room, pr, citizensWin, guessInfo) {
 
   if (citizensWin) {
     for (const p of room.players) {
-      if (mafiaSet.has(p.id)) continue;
+      if (p.isSpectator || mafiaSet.has(p.id)) continue; // 관전자는 라운드에 참여하지 않았으므로 점수 대상 아님
       add(p.id, 1);
       // 실제로 마피아를 지목한 시민에게 보너스
       const myVote = room.votes[p.id];
@@ -1056,6 +1064,7 @@ function applyScores(room, pr, citizensWin, guessInfo) {
   }
 
   return room.players
+    .filter((p) => !p.isSpectator) // 이번 라운드를 구경만 한 관전자는 결과 스코어보드에서 뺀다
     .map((p) => ({
       id: p.id,
       nick: p.nick,
@@ -1496,9 +1505,25 @@ io.on('connection', (socket) => {
     const room = roomOf();
     if (!room || room.phase !== 'lobby') return;
     const me = getPlayer(room, socket.id);
-    if (!me || me.id === room.hostId) return;
+    if (!me || me.id === room.hostId || me.isSpectator) return;
     if (room.ready[socket.id]) delete room.ready[socket.id];
     else room.ready[socket.id] = true;
+    broadcast(room);
+  });
+
+  /** 참여자 ↔ 관전자 전환. 라운드가 진행 중일 때는 다음 판까지 기다린다. */
+  socket.on('player:setSpectator', (payload) => {
+    const room = roomOf();
+    if (!room) return;
+    if (room.phase !== 'lobby' && room.phase !== 'result') return;
+    const me = getPlayer(room, socket.id);
+    if (!me || me.isBot) return;
+    const want = !!(payload && payload.spectator);
+    if (want === !!me.isSpectator) return;
+    if (!want && activePlayers(room).length >= CONFIG.MAX_PLAYERS) return; // 정원 초과
+    me.isSpectator = want;
+    if (want) delete room.ready[me.id]; // 관전자는 준비 상태가 필요 없다
+    pushSystem(room, want ? 'becameSpectator' : 'becamePlayer', { nick: me.nick });
     broadcast(room);
   });
 
@@ -1512,7 +1537,7 @@ io.on('connection', (socket) => {
   socket.on('game:again', () => {
     const room = roomOf();
     if (!room || room.hostId !== socket.id || room.phase !== 'result') return;
-    if (connectedPlayers(room).length >= CONFIG.MIN_PLAYERS) {
+    if (activePlayers(room).length >= CONFIG.MIN_PLAYERS) {
       startGame(room);
     } else {
       backToLobby(room, 'backLobbyFew');
@@ -1685,7 +1710,7 @@ io.on('connection', (socket) => {
     const room = roomOf();
     if (!room) return;
     const me = getPlayer(room, socket.id);
-    if (!me) return;
+    if (!me || me.isSpectator) return;
     toggleEarlyVote(room, socket.id);
   });
 
@@ -1741,11 +1766,11 @@ io.on('connection', (socket) => {
     const room = roomOf();
     if (!room || room.phase !== 'vote') return;
     const me = getPlayer(room, socket.id);
-    if (!me) return;
+    if (!me || me.isSpectator) return;
     const targetId = String((payload && payload.targetId) || '');
     if (targetId === socket.id) return; // 자기 자신 투표 금지
     const target = getPlayer(room, targetId);
-    if (!target || !target.connected) return;
+    if (!target || !target.connected || target.isSpectator) return;
 
     room.votes[socket.id] = targetId;
     maybeFinishVote(room);
@@ -1844,7 +1869,7 @@ function handleLeave(socket, permanent) {
 
   // 게임 중이었다면 상황에 맞게 진행
   if (room.phase !== 'lobby' && room.phase !== 'result') {
-    if (connectedPlayers(room).length < 2) {
+    if (activePlayers(room).length < 2) {
       backToLobby(room, 'tooFew');
       return;
     }
@@ -1861,7 +1886,7 @@ function handleLeave(socket, permanent) {
     }
     if (room.phase === 'discuss') {
       // 남은 사람들끼리 이미 전원 동의 상태일 수 있으므로 다시 확인
-      const conn = connectedPlayers(room);
+      const conn = activePlayers(room);
       if (conn.length > 0 && conn.every((p) => room.earlyVotes[p.id])) {
         pushSystem(room, 'earlyAll');
         startVote(room);
