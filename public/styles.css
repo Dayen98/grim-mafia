@@ -331,6 +331,29 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
   padding: 12px 14px; text-align: center; font-weight: 700; font-size: 15px;
 }
 
+/* 게임 방법 페이지 상단: 번호 박스를 화살표로 이어 전체 흐름을 한눈에 */
+.stepflow {
+  display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+  overflow-x: auto; padding: 4px 2px 12px; -webkit-overflow-scrolling: touch;
+}
+.sf-item {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  background: var(--paper-2); border: 2.5px solid var(--ink); border-radius: 999px;
+  padding: 8px 16px 8px 8px; box-shadow: 2px 3px 0 rgba(47,42,38,.6);
+}
+.sf-num {
+  flex: none; width: 24px; height: 24px; border-radius: 50%; color: #fff;
+  display: grid; place-items: center; font-size: 13px; font-weight: 700;
+}
+.sf-label { font-weight: 700; font-size: 15px; }
+.sf-arrow { flex: none; color: var(--ink-soft); font-size: 18px; }
+.sf-1 .sf-num { background: var(--blue); }
+.sf-2 .sf-num { background: var(--green); }
+.sf-3 .sf-num { background: var(--warn); }
+.sf-4 .sf-num { background: var(--purple); }
+.sf-5 .sf-num { background: var(--red); }
+.sf-6 .sf-num { background: var(--pink); }
+
 .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
 .steps > li { display: flex; gap: 12px; align-items: flex-start; }
 .steps .s-ic { font-size: 26px; line-height: 1.2; flex: 0 0 34px; text-align: center; }
