@@ -268,6 +268,35 @@ function sanitizeNick(raw) {
   return s || '익명';
 }
 
+/** 방장이 제목을 안 정하면 대신 채워주는 문구들 */
+const TITLE_PRESETS = [
+  '나랑 마피아 하실 분?',
+  '피카소 드루와',
+  '그림 좀 그린다는 사람 모여',
+  '몰래 그리는 사람 잡습니다',
+  '오늘의 반 고흐는 누구?',
+  '한 획으로 승부 보자',
+  '낙서 마피아 참가자 모집',
+  '당신의 그림 실력을 보여주세요',
+  '거짓말쟁이를 찾아라',
+  '심심한데 그림이나 그릴까',
+  '누가 봐도 마피아인 사람 나와',
+  '그림왕 가리는 방',
+  '초보 환영! 같이 그려요',
+  '마피아를 색출하라',
+  '그림 실력보다 눈치 싸움',
+  '조용히 들어와서 조용히 그리기',
+];
+
+function randomTitle() {
+  return pick(TITLE_PRESETS);
+}
+
+function sanitizeTitle(raw) {
+  const s = String(raw || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  return s;
+}
+
 /**
  * 채팅에서 정답 단어를 하트로 가린다.
  * "기 린", "기.린", "기-린" 처럼 사이에 공백/기호를 끼워 넣는 우회도 함께 막는다.
@@ -331,10 +360,11 @@ function clamp01(v) {
 /** @type {Map<string, Room>} */
 const rooms = new Map();
 
-function createRoom(hostId, hostNick, hostAvatar, isPublic) {
+function createRoom(hostId, hostNick, hostAvatar, isPublic, title) {
   const code = makeRoomCode();
   const room = {
     code,
+    title: sanitizeTitle(title) || randomTitle(), // 방장이 안 정하면 재미있는 문구를 대신 채워준다
     hostId,
     hostNick, // 잠깐 끊긴 방장이 돌아오면 권한을 되돌려주기 위해 기억
     isPublic: isPublic !== false, // 기본은 공개 (빠른 시작·방 목록에 노출)
@@ -599,6 +629,7 @@ function publicState(room) {
   const showCategory = r && ['draw', 'discuss', 'vote', 'guess', 'result'].includes(room.phase);
   return {
     code: room.code,
+    title: room.title,
     hostId: room.hostId,
     phase: room.phase,
     roundNo: room.roundNo,
@@ -699,6 +730,7 @@ function roomSummary(room) {
   const conn = connectedPlayers(room).length;
   return {
     code: room.code,
+    title: room.title,
     hostNick: room.hostNick,
     players: conn,
     max: CONFIG.MAX_PLAYERS,
@@ -1432,12 +1464,26 @@ io.on('connection', (socket) => {
 
   socket.on('room:create', (payload, cb) => {
     const nick = sanitizeNick(payload && payload.nick);
-    const room = createRoom(socket.id, nick, payload && payload.avatar, payload && payload.isPublic);
+    const room = createRoom(
+      socket.id,
+      nick,
+      payload && payload.avatar,
+      payload && payload.isPublic,
+      payload && payload.title
+    );
     socket.data.roomCode = room.code;
     socket.join(room.code);
     pushSystem(room, 'created', { nick });
     if (typeof cb === 'function') cb({ ok: true, code: room.code });
     sendCanvas(socket, room);
+    broadcast(room);
+  });
+
+  /** 방장이 대기실 언제든 방 제목을 바꿀 수 있다 (게임 로직에는 영향 없음) */
+  socket.on('room:setTitle', (payload) => {
+    const room = roomOf();
+    if (!room || room.hostId !== socket.id) return;
+    room.title = sanitizeTitle(payload && payload.title) || randomTitle();
     broadcast(room);
   });
 

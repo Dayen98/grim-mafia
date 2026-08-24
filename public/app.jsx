@@ -61,6 +61,8 @@ const I18N = {
     goLobby: '시작하기', changeChar: '캐릭터 바꾸기',
     quickStart: '빠른 시작', quickStartSub: '자리 있는 방에 바로 입장 · 없으면 새 방 생성',
     createGo: '이 설정으로 방 만들기', codePh: '방 코드 입력',
+    roomTitleLabel: '방 제목', roomTitlePh: '예: 나랑 마피아 하실 분? (안 정하면 자동으로 지어드려요)',
+    editTitle: '제목 바꾸기', save: '저장',
     visPublic: '공개', visPrivate: '비공개',
     visPublicDesc: '누구나 빠른 시작·방 목록으로 들어올 수 있어요.',
     visPrivateDesc: '목록에 안 보이고, 코드를 아는 사람만 들어올 수 있어요.',
@@ -216,6 +218,8 @@ const I18N = {
     goLobby: 'Continue', changeChar: 'Change character',
     quickStart: 'Quick start', quickStartSub: 'Jump into an open room, or make one',
     createGo: 'Create room with these settings', codePh: 'Enter room code',
+    roomTitleLabel: 'Room title', roomTitlePh: "e.g. Anyone up for Mafia? (leave blank for a random one)",
+    editTitle: 'Edit title', save: 'Save',
     visPublic: 'Public', visPrivate: 'Private',
     visPublicDesc: 'Anyone can join via quick start or the room list.',
     visPrivateDesc: 'Hidden from the list — only people with the code can join.',
@@ -1129,10 +1133,14 @@ function RoomBrowser({ socket, onJoin, busy }) {
       {list.map((r) => (
         <div key={r.code} className={'roomcard' + (r.joinable ? '' : ' busy')}>
           <div className="rc-top">
-            <span className="rc-code">{r.code}</span>
             <span className={'rc-state' + (r.waiting ? ' waiting' : '')}>
               {r.waiting ? t('rcWaiting') : t('rcPlaying')}
             </span>
+          </div>
+          <div className="rc-title">{r.title}</div>
+          <div className="rc-sub">
+            <span className="rc-code">{r.code}</span>
+            {r.hostNick && <span className="rc-host">· {r.hostNick}</span>}
           </div>
           <div className="rc-meta">
             <span className="rc-badge">
@@ -1269,6 +1277,7 @@ function LobbyScreen({ socket, connected, nick, avatar, onLang, onBack, onEnter,
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState(() => (location.hash || '').replace('#', '').toUpperCase());
   const [isPublic, setIsPublic] = useState(true);
+  const [roomTitle, setRoomTitle] = useState('');
   const [showBrowse, setShowBrowse] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [contactSignal, setContactSignal] = useState(0); // 푸터의 '문의' → 문의 폼 열기
@@ -1326,6 +1335,16 @@ function LobbyScreen({ socket, connected, nick, avatar, onLang, onBack, onEnter,
 
       {showCreate && (
         <div className="subpanel">
+          <div className="field">
+            <label>{t('roomTitleLabel')}</label>
+            <input
+              value={roomTitle}
+              maxLength={40}
+              placeholder={t('roomTitlePh')}
+              onChange={(e) => setRoomTitle(e.target.value)}
+              style={{ width: '100%' }}
+            />
+          </div>
           <div className="vistoggle">
             <button
               type="button"
@@ -1344,7 +1363,12 @@ function LobbyScreen({ socket, connected, nick, avatar, onLang, onBack, onEnter,
             </button>
           </div>
           <p className="muted vis-desc">{isPublic ? t('visPublicDesc') : t('visPrivateDesc')}</p>
-          <button className="primary" style={{ width: '100%' }} disabled={busy} onClick={() => go('room:create', { isPublic })}>
+          <button
+            className="primary"
+            style={{ width: '100%' }}
+            disabled={busy}
+            onClick={() => go('room:create', { isPublic, title: roomTitle })}
+          >
             {t('createGo')}
           </button>
         </div>
@@ -1993,9 +2017,50 @@ function Lobby({ st, socket }) {
   const iAmReady = st.readyIds.includes(st.you.id);
   const link = location.origin + '/#' + st.code;
 
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(st.title || '');
+  const saveTitle = () => {
+    socket.emit('room:setTitle', { title: titleDraft });
+    setEditingTitle(false);
+  };
+
   return (
     <div className="panel center">
-      <h2 style={{ marginTop: 0 }}>{t('lobbyTitle')}</h2>
+      {editingTitle ? (
+        <div className="row" style={{ maxWidth: 420, margin: '0 auto 6px' }}>
+          <input
+            autoFocus
+            value={titleDraft}
+            maxLength={40}
+            placeholder={t('roomTitlePh')}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveTitle();
+              if (e.key === 'Escape') setEditingTitle(false);
+            }}
+          />
+          <button style={{ flex: '0 0 70px' }} onClick={saveTitle}>
+            {t('save')}
+          </button>
+        </div>
+      ) : (
+        <h2 style={{ marginTop: 0 }}>
+          {st.title}
+          {st.you.isHost && (
+            <button
+              className="titleeditbtn"
+              title={t('editTitle')}
+              onClick={() => {
+                setTitleDraft(st.title || '');
+                setEditingTitle(true);
+              }}
+            >
+              ✏️
+            </button>
+          )}
+        </h2>
+      )}
+      <p className="muted" style={{ marginTop: -6 }}>{t('lobbyTitle')}</p>
       <p className="muted">
         {t('shareCode', { code: st.code, min: st.minPlayers, max: st.maxPlayers })}
       </p>
