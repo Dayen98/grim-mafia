@@ -62,7 +62,7 @@ const I18N = {
     quickStart: '빠른 시작', quickStartSub: '자리 있는 방에 바로 입장 · 없으면 새 방 생성',
     createGo: '이 설정으로 방 만들기', codePh: '방 코드 입력',
     roomTitleLabel: '방 제목', roomTitlePh: '예: 나랑 마피아 하실 분? (안 정하면 자동으로 지어드려요)',
-    editTitle: '제목 바꾸기', save: '저장',
+    editTitle: '제목 바꾸기', save: '저장', close: '닫기',
     visPublic: '공개', visPrivate: '비공개',
     visPublicDesc: '누구나 빠른 시작·방 목록으로 들어올 수 있어요.',
     visPrivateDesc: '목록에 안 보이고, 코드를 아는 사람만 들어올 수 있어요.',
@@ -219,7 +219,7 @@ const I18N = {
     quickStart: 'Quick start', quickStartSub: 'Jump into an open room, or make one',
     createGo: 'Create room with these settings', codePh: 'Enter room code',
     roomTitleLabel: 'Room title', roomTitlePh: "e.g. Anyone up for Mafia? (leave blank for a random one)",
-    editTitle: 'Edit title', save: 'Save',
+    editTitle: 'Edit title', save: 'Save', close: 'Close',
     visPublic: 'Public', visPrivate: 'Private',
     visPublicDesc: 'Anyone can join via quick start or the room list.',
     visPrivateDesc: 'Hidden from the list — only people with the code can join.',
@@ -1570,6 +1570,8 @@ function GameFooter({ onContact }) {
 
 function PlayerList({ st, socket, bubbles }) {
   const me = st.you;
+  // 대기실에서는 캐릭터가 잘 보이도록 카드형으로, 크게 보여준다
+  const isLobby = st.phase === 'lobby';
   const orderIndex = (id) => {
     const i = st.order.indexOf(id);
     return i < 0 ? null : i + 1;
@@ -1590,7 +1592,7 @@ function PlayerList({ st, socket, bubbles }) {
           </span>
         )}
       </h3>
-      <div className="players">
+      <div className={'players' + (isLobby ? ' lobbygrid' : '')}>
         {st.players.map((p) => {
           const cls = [
             'player',
@@ -1605,7 +1607,7 @@ function PlayerList({ st, socket, bubbles }) {
             <div key={p.id} className={cls}>
               {n !== null && <span className="num">{n}</span>}
               <span className="pavatar">
-                <Avatar a={p.avatar} size={36} />
+                <Avatar a={p.avatar} size={isLobby ? 84 : 36} />
                 {bubbles && bubbles[p.id] && (
                   <span className="bubble" key={bubbles[p.id].id}>
                     {bubbles[p.id].text}
@@ -1793,6 +1795,26 @@ function Scoreboard({ st, socket, showReset }) {
       )}
       <div className="scorerule muted">
         {t('scoreRule')}
+      </div>
+    </div>
+  );
+}
+
+/** 설정/게임방법 같은 걸 팝업으로 띄우는 용도. 바깥 클릭·Esc로 닫힌다. */
+function Modal({ onClose, children }) {
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label={t('close')}>
+          ✕
+        </button>
+        {children}
       </div>
     </div>
   );
@@ -2023,6 +2045,8 @@ function Lobby({ st, socket }) {
     socket.emit('room:setTitle', { title: titleDraft });
     setEditingTitle(false);
   };
+  const [showSettings, setShowSettings] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   return (
     <div className="panel center">
@@ -2135,11 +2159,25 @@ function Lobby({ st, socket }) {
         </React.Fragment>
       )}
 
-      <div style={{ marginTop: 20, textAlign: 'left' }}>
-        <SettingsPanel st={st} socket={socket} />
-        <Scoreboard st={st} socket={socket} showReset />
-        <RuleBook />
+      <div className="lobbytoolrow">
+        <button onClick={() => setShowSettings(true)}>{t('setTitle')}</button>
+        <button onClick={() => setShowRules(true)}>{t('rbTitle')}</button>
       </div>
+
+      <div style={{ marginTop: 14, textAlign: 'left' }}>
+        <Scoreboard st={st} socket={socket} showReset />
+      </div>
+
+      {showSettings && (
+        <Modal onClose={() => setShowSettings(false)}>
+          <SettingsPanel st={st} socket={socket} />
+        </Modal>
+      )}
+      {showRules && (
+        <Modal onClose={() => setShowRules(false)}>
+          <RuleBook />
+        </Modal>
+      )}
     </div>
   );
 }
