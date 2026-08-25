@@ -704,6 +704,12 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 .timer.urgent { color: var(--red); }
 
 .cols { display: grid; grid-template-columns: 1fr 310px; gap: 12px; align-items: start; }
+@media (min-width: 901px) {
+  /* 대기실만 좌우를 바꾼다: 캐릭터 목록을 넓은 왼쪽에, 방 설정(제목/시작 버튼 등)을 좁은 오른쪽에.
+     900px 이하는 어차피 한 줄로 쌓이니(아래) 좌우 개념이 없어서 여기서만 적용한다. */
+  .cols.cols-lobby > div:first-child { order: 2; }
+  .cols.cols-lobby > div:last-child { order: 1; }
+}
 @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
 @media (max-width: 768px) {
   .cols > div:first-child { order: 1; }

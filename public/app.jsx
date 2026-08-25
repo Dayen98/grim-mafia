@@ -2443,6 +2443,7 @@ function VotePanel({ st, socket }) {
               socket.emit('vote:cast', { targetId: p.id });
             }}
           >
+            <Avatar a={p.avatar} size={56} />
             <span className="vp-nick">{p.nick}</span>
             <span className="vp-state">{me.myVote === p.id ? t('voteMine') : t('voteThis')}</span>
           </button>
@@ -2932,7 +2933,7 @@ function Game({ st, socket, offset, strokesRef, dirtyRef, onLeave, onLang, liveT
         </button>
       </div>
 
-      <div className="cols">
+      <div className={'cols' + (st.phase === 'lobby' ? ' cols-lobby' : '')}>
         <div>
           {st.phase === 'lobby' && <Lobby st={st} socket={socket} />}
 
