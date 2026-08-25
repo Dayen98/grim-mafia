@@ -1607,7 +1607,7 @@ function PlayerList({ st, socket, bubbles }) {
             <div key={p.id} className={cls}>
               {n !== null && <span className="num">{n}</span>}
               <span className="pavatar">
-                <Avatar a={p.avatar} size={isLobby ? 84 : 36} />
+                <Avatar a={p.avatar} size={isLobby ? 84 : 46} />
                 {bubbles && bubbles[p.id] && (
                   <span className="bubble" key={bubbles[p.id].id}>
                     {bubbles[p.id].text}
