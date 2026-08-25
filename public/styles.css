@@ -131,6 +131,31 @@ input:focus { outline: none; box-shadow: 2px 3px 0 rgba(47,42,38,.5); }
 }
 .ae-num { width: 18px; text-align: center; font-size: 15px; }
 
+.shopopenbtn { margin-top: 8px; width: 100%; }
+
+/* ---------- 상점 (체험판) ---------- */
+
+.shop-points {
+  display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px;
+  background: var(--yellow); border: 2px solid var(--ink); border-radius: 999px;
+  padding: 3px 12px; font-weight: 700; font-size: 15px;
+}
+.shoptrial { font-size: 13px; line-height: 1.5; margin-top: -4px; margin-bottom: 12px; }
+.shop-flash {
+  background: #fbdcd2; border: 2px solid var(--red); border-radius: var(--wob-2);
+  color: var(--red); font-weight: 700; text-align: center; padding: 6px 10px; margin-bottom: 10px;
+}
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.shop-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  background: var(--paper); border: 2.5px solid var(--ink); border-radius: var(--wob-2);
+  padding: 12px 8px; box-shadow: 2px 3px 0 rgba(47,42,38,.55);
+}
+.shop-item.equipped { background: #dff0dc; border-color: var(--green); }
+.shop-emoji { font-size: 34px; line-height: 1; }
+.shop-name { font-size: 13px; font-weight: 700; }
+.shop-item button { width: 100%; font-size: 13px; padding: 5px 6px; min-height: 0; }
+
 /* 플레이어 목록 속 캐릭터 + 말풍선.
    말풍선은 캐릭터 오른쪽으로 나온다 (왼쪽이면 화면 밖으로 잘림) */
 .pavatar { position: relative; flex: 0 0 auto; display: block; }

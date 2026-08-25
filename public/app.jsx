@@ -16,6 +16,10 @@ const I18N = {
     tagline: '🎨 친구들과 한 획씩 그림을 이어 그리며\n마피아를 찾아라!',
     nick: '닉네임 (최대 12자)', nickPh: '예: 홍길동',
     myChar: '내 캐릭터', createRoom: '새 방 만들기', roomCode: '방 코드', enter: '입장',
+    shopBtn: '🛍️ 상점', shopTitle: '🛍️ 아이템 상점', shopPoints: '포인트',
+    shopTrialNote: '⚠️ 체험판이에요. 실제 결제는 아직 없고, 이 브라우저에만 저장되는 가짜 포인트로 미리 구경하는 용도예요. 브라우저를 바꾸면 초기화돼요.',
+    shopNoneItem: '없음', shopOwned: '보유함', shopEquip: '착용하기', shopEquipped: '착용 중', shopUnequip: '벗기',
+    shopBuy: '구매하기', shopNotEnough: '포인트 부족',
     connecting: '서버에 연결하는 중...', needNick: '닉네임을 입력해주세요.', reqFail: '요청에 실패했습니다.',
     rulesTitle: '규칙 요약',
     rulesSum: '· 4~12명이 모이면 시작. 시민은 단어를, 마피아는 카테고리만 받습니다.\n· 한 캔버스에 순서대로 한 획씩 이어 그립니다.\n· 토론 → 투표 → 마피아를 잡고 단어까지 못 맞히게 하면 시민 승리!',
@@ -173,6 +177,10 @@ const I18N = {
     tagline: '🎨 Draw one stroke each with friends\nand find the impostor!',
     nick: 'Nickname (max 12)', nickPh: 'e.g. Alex',
     myChar: 'My character', createRoom: 'Create room', roomCode: 'Room code', enter: 'Join',
+    shopBtn: '🛍️ Shop', shopTitle: '🛍️ Item Shop', shopPoints: 'points',
+    shopTrialNote: "⚠️ This is a preview. There's no real payment yet — it just uses fake points saved in this browser so you can try the shop. Switching browsers resets it.",
+    shopNoneItem: 'None', shopOwned: 'Owned', shopEquip: 'Equip', shopEquipped: 'Equipped', shopUnequip: 'Unequip',
+    shopBuy: 'Buy', shopNotEnough: 'Not enough points',
     connecting: 'Connecting to server...', needNick: 'Please enter a nickname.', reqFail: 'Request failed.',
     rulesTitle: 'Quick rules',
     rulesSum: '· 4-12 players. Citizens get a word, the impostor only gets the category.\n· Everyone adds ONE stroke to the same canvas, in turn.\n· Discuss → vote → catch the impostor AND stop them guessing to win!',
@@ -646,12 +654,58 @@ const avLabel = (k) => (LANG === 'en' ? AV_LABEL_EN : AV_LABEL_KO)[k];
 const AV_KEYS = ['skin', 'hair', 'hairColor', 'brows', 'eyes', 'mouth', 'acc'];
 const AV_MAX = { skin: 8, hair: 8, hairColor: 8, brows: 6, eyes: 8, mouth: 8, acc: 10 };
 
-const defaultAvatar = () => ({ skin: 0, hair: 1, hairColor: 0, brows: 1, eyes: 0, mouth: 1, acc: 0 });
+const defaultAvatar = () => ({ skin: 0, hair: 1, hairColor: 0, brows: 1, eyes: 0, mouth: 1, acc: 0, frame: 0 });
 const randomAvatar = () => {
   const a = {};
   AV_KEYS.forEach((k) => (a[k] = Math.floor(Math.random() * AV_MAX[k])));
   return a;
 };
+
+/* ------------------------------------------------------------------ */
+/* 상점 (체험판) — 진짜 결제는 없고, 브라우저에 저장되는 가짜 포인트로만 동작 */
+/* ------------------------------------------------------------------ */
+
+// frame: 0 = 없음(무료), 1~ 은 상점에서 사는 뱃지. 무료로 순환하는 AV_KEYS와는 분리해서 관리한다.
+const FRAME_ITEMS = [
+  { id: 1, emoji: '⭐', nameKo: '별 뱃지', nameEn: 'Star Badge', price: 100 },
+  { id: 2, emoji: '👑', nameKo: '왕관 뱃지', nameEn: 'Crown Badge', price: 250 },
+  { id: 3, emoji: '💖', nameKo: '하트 뱃지', nameEn: 'Heart Badge', price: 120 },
+  { id: 4, emoji: '🌈', nameKo: '무지개 뱃지', nameEn: 'Rainbow Badge', price: 150 },
+  { id: 5, emoji: '🔥', nameKo: '불꽃 뱃지', nameEn: 'Flame Badge', price: 180 },
+  { id: 6, emoji: '🍀', nameKo: '네잎클로버 뱃지', nameEn: 'Clover Badge', price: 130 },
+];
+const frameName = (item) => (LANG === 'en' ? item.nameEn : item.nameKo);
+const START_POINTS = 300;
+
+function getPoints() {
+  const raw = localStorage.getItem('gm_points');
+  // localStorage.getItem은 없으면 null을 주는데, Number(null)이 0이라 "저장된 적 없음"과
+  // "0포인트로 저장됨"을 구분하려면 null인지부터 따로 봐야 한다.
+  if (raw === null) {
+    localStorage.setItem('gm_points', String(START_POINTS));
+    return START_POINTS;
+  }
+  const v = Math.floor(Number(raw));
+  return Number.isFinite(v) && v >= 0 ? v : START_POINTS;
+}
+function setPoints(n) {
+  localStorage.setItem('gm_points', String(Math.max(0, Math.floor(n))));
+}
+function getOwnedFrames() {
+  try {
+    const arr = JSON.parse(localStorage.getItem('gm_owned_frames') || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch (_) {
+    return [];
+  }
+}
+function addOwnedFrame(id) {
+  const owned = getOwnedFrames();
+  if (!owned.includes(id)) {
+    owned.push(id);
+    localStorage.setItem('gm_owned_frames', JSON.stringify(owned));
+  }
+}
 
 /* 손으로 그린 낙서 얼굴.
    굵은 잉크 선 + 삐뚤한 사각 머리통이 기본 골격이고,
@@ -954,7 +1008,8 @@ function Avatar({ a, size = 44, className }) {
   const av = { ...defaultAvatar(), ...(a || {}) };
   const skin = SKINS[av.skin] || SKINS[0];
   const hc = HAIRC[av.hairColor] || HAIRC[0];
-  const sig = AV_KEYS.map((k) => av[k]).join('-');
+  const sig = AV_KEYS.map((k) => av[k]).join('-') + '-f' + (av.frame || 0);
+  const frameItem = FRAME_ITEMS.find((f) => f.id === av.frame);
 
   return (
     <svg
@@ -977,6 +1032,12 @@ function Avatar({ a, size = 44, className }) {
       {eyesPart(av.eyes)}
       {mouthPart(av.mouth)}
       {accPart(av.acc)}
+      {/* 상점에서 산 뱃지 (있으면 오른쪽 아래에 붙인다) */}
+      {frameItem && (
+        <text x="90" y="92" fontSize="26" textAnchor="middle" dominantBaseline="middle">
+          {frameItem.emoji}
+        </text>
+      )}
     </svg>
   );
 }
@@ -991,7 +1052,12 @@ function AvatarEditor({ value, onChange }) {
     <div className="avatar-editor">
       <div className="ae-preview">
         <Avatar a={value} size={104} />
-        <button type="button" className="ae-dice" title="랜덤" onClick={() => onChange(randomAvatar())}>
+        <button
+          type="button"
+          className="ae-dice"
+          title="랜덤"
+          onClick={() => onChange({ ...randomAvatar(), frame: value.frame })}
+        >
           🎲
         </button>
       </div>
@@ -1008,6 +1074,72 @@ function AvatarEditor({ value, onChange }) {
             </button>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** 아바타 뱃지 상점 (체험판) — 진짜 결제 없이, 가짜 포인트로 미리 구경하는 용도 */
+function Shop({ avatar, onEquip }) {
+  const [points, setPointsState] = useState(getPoints());
+  const [owned, setOwned] = useState(getOwnedFrames());
+  const [flash, setFlash] = useState('');
+
+  const buy = (item) => {
+    if (owned.includes(item.id)) return;
+    if (points < item.price) {
+      setFlash(t('shopNotEnough'));
+      setTimeout(() => setFlash(''), 1500);
+      return;
+    }
+    const next = points - item.price;
+    setPoints(next);
+    setPointsState(next);
+    addOwnedFrame(item.id);
+    setOwned(getOwnedFrames());
+    onEquip(item.id); // 사자마자 바로 착용
+  };
+
+  return (
+    <div className="shop">
+      <h3>{t('shopTitle')}</h3>
+      <p className="muted shoptrial">{t('shopTrialNote')}</p>
+      <div className="shop-points">🎨 {points} {t('shopPoints')}</div>
+      {flash && <div className="shop-flash">{flash}</div>}
+      <div className="shop-grid">
+        <div className={'shop-item' + (!avatar.frame ? ' equipped' : '')}>
+          <div className="shop-emoji">🚫</div>
+          <div className="shop-name">{t('shopNoneItem')}</div>
+          <button
+            className={!avatar.frame ? 'primary' : ''}
+            disabled={!avatar.frame}
+            onClick={() => onEquip(0)}
+          >
+            {!avatar.frame ? t('shopEquipped') : t('shopUnequip')}
+          </button>
+        </div>
+        {FRAME_ITEMS.map((item) => {
+          const has = owned.includes(item.id);
+          const isEquipped = avatar.frame === item.id;
+          return (
+            <div key={item.id} className={'shop-item' + (isEquipped ? ' equipped' : '')}>
+              <div className="shop-emoji">{item.emoji}</div>
+              <div className="shop-name">{frameName(item)}</div>
+              {has ? (
+                <button
+                  className={isEquipped ? 'primary' : ''}
+                  onClick={() => onEquip(isEquipped ? 0 : item.id)}
+                >
+                  {isEquipped ? t('shopEquipped') : t('shopEquip')}
+                </button>
+              ) : (
+                <button onClick={() => buy(item)}>
+                  {item.price} · {t('shopBuy')}
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1422,6 +1554,8 @@ function Home({ socket, connected, onLang, onReady }) {
     localStorage.setItem('gm_avatar', JSON.stringify(a));
   };
 
+  const [showShop, setShowShop] = useState(false);
+
   const enter = () => {
     const n = nick.trim();
     if (!n) {
@@ -1456,7 +1590,16 @@ function Home({ socket, connected, onLang, onReady }) {
       <div className="field">
         <label>{t('myChar')}</label>
         <AvatarEditor value={avatar} onChange={changeAvatar} />
+        <button type="button" className="shopopenbtn" onClick={() => setShowShop(true)}>
+          {t('shopBtn')}
+        </button>
       </div>
+
+      {showShop && (
+        <Modal onClose={() => setShowShop(false)}>
+          <Shop avatar={avatar} onEquip={(id) => changeAvatar({ ...avatar, frame: id })} />
+        </Modal>
+      )}
 
       <button className="primary" style={{ width: '100%' }} disabled={!connected} onClick={enter}>
         {t('goLobby')}

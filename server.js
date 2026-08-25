@@ -144,7 +144,9 @@ function pickWordFor(room) {
 
 /* ---------------- 캐릭터(아바타) ---------------- */
 
-const AVATAR_LIMITS = { skin: 8, hair: 8, hairColor: 8, brows: 6, eyes: 8, mouth: 8, acc: 10 };
+// frame: 0=없음, 1~6은 상점(체험판)에서 산 뱃지. 값 자체는 서버가 그대로 믿고 중계만 한다
+// (진짜 결제가 아직 없어서 "구매했는지"는 검증하지 않는, 어디까지나 미리보기용 필드)
+const AVATAR_LIMITS = { skin: 8, hair: 8, hairColor: 8, brows: 6, eyes: 8, mouth: 8, acc: 10, frame: 7 };
 
 function sanitizeAvatar(a) {
   const out = {};
@@ -157,7 +159,8 @@ function sanitizeAvatar(a) {
 
 function randomAvatar() {
   const out = {};
-  for (const [k, n] of Object.entries(AVATAR_LIMITS)) out[k] = randInt(n);
+  // 봇/기본값은 뱃지 없이 (상점에서 산 사람만 눈에 띄게)
+  for (const [k, n] of Object.entries(AVATAR_LIMITS)) out[k] = k === 'frame' ? 0 : randInt(n);
   return out;
 }
 
